@@ -1,0 +1,118 @@
+
+We have to develop a "AI Meeting Memory + Deal Intelligence" product for brokers.
+we are building a decision-support system for deal closing.
+Below is a practical, production-grade roadmap (not theory).
+
+1. Clearly Define the Product
+
+The app automatically converts real estate conversations into structured deal intelligence.
+The output must not be transcript.
+The output must be actionable broker insight
+Structured Output (THIS is out MVP deliverable)
+
+after completing meeting the app should generate (basically a Customer Relation Manager)
+
+ex. 
+Client Profile
+    Budget range
+    Loan requirement
+    Family size
+    Urgency (immediate / 3 months / investment only)
+Interest Signals
+    2BHK vs 3BHK preference
+    Floor preference
+    Vastu importance
+    Location priority
+    Parking requirement
+Financial Intelligence
+    Expected rent
+    Builder scheme
+    Negotiation possibility
+    Discount probability
+    Holding period
+
+Deal Probability Score
+(AI should literally say: 65% closing chance)
+
+You are a sales weapon for the broker
+
+2) How the App Actually Works (Architecture)
+
+Broker opens app → 
+    Register/Login in the app
+    taps Start Visit Mode
+    We will ask for basic details ex. title of meeting
+    App records conversation
+    Stops recording
+    Converts speech → text
+    AI understands discussion
+    AI extracts structured information
+    Broker receives summarized deal sheet
+
+3) System Architecture
+You do NOT send raw audio to GPT directly.
+Pipeline:
+Audio → Speech-to-Text → AI Understanding → Structured Summary → CRM Card
+
+4) Technology Stack (Recommended)
+    1. Speech-to-Text (MOST CRITICAL DECISION)
+        Use: Deepgram or AssemblyAI
+        Because meeting can be in multiple language & also can be in mixed language
+
+        You must enable:
+        Speaker Diarization (So AI knows: builder spoke vs client spoke)
+        This is extremely important because: Builder promise ≠ Client requirement
+    2. AI Understanding Layer
+        OpenAI GPT-4.1 / GPT-4o mini / gemini for extraction
+        But DO NOT ask: “Summarize this conversation”
+        Instead use: information extraction prompting
+        You will send transcript and ask AI: "Extract budget, urgency, unit preference, financing requirement, objections, risk factors and builder commitments. Return strict JSON."
+        This is key: we are building a conversation intelligence engine.
+    3. Structured Database (Most founders miss this)
+        we need to store:
+            Client profile
+            Property interest
+            Builder promises
+            Next follow-up date
+        use MongoDB.
+        Later we will have: “Show me all clients looking for 3BHK under ₹90L in Shela”
+        Now you are not an app. You are a lead intelligence CRM.
+    4. Auto Follow-Up Reminder
+        AI should automatically generate: “Call after 5 days — client waiting for bank approval"
+    5. Objection Detection
+        Price too high
+        Wife not convinced
+        Loan eligibility doubt
+    6. Builder Comparison
+        AI automatically compares projects discussed
+5) What You Build First
+    DO NOT build CRM dashboard initially.
+    First:
+        1. Create a TODO.MD file where all tasks will be stored, so we will manage tasks from there.
+        2. We are Backend, so we have to provide API. FE will be in different project/repo. So here we will do only BE related tasks.
+        3. use node express with type script. & create proper folder structure.
+            config - where all configs will be stored
+            controller - you know 
+            middleware - we will validate & check auth.
+            modules - all tables will be stored
+            routes - you know
+            services - we will have logics
+            types - you know
+            utils - common functions will be stored here
+    Build only this:
+        Registration & login flow
+        FE wil give Recorded meeting
+        Generate summary
+        Show client card
+
+    That’s it.
+    Your MVP screen should show:
+    Meeting Summary Card
+        Budget: ₹75L–₹85L
+        Preference: 3BHK
+        Urgency: 2 months
+        Loan: Required
+        Key Concern: Maintenance cost
+        Closing Probability: 58%
+        Suggested Action: Share loan options
+    If you deliver this reliably → brokers will pay.
