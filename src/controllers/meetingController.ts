@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
-import { extractDealIntelligence } from '@/services/dealIntelligenceServiceChatGPT';
+import { extractDealIntelligence } from '@/services/dealIntelligenceService';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {

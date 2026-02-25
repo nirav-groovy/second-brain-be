@@ -7,10 +7,10 @@ const MeetingSchema: Schema = new Schema({
   transcript: { type: String }, // Raw transcript from STT
   speakers: [{
     speakerId: String,
-    role: { type: String, enum: ['Broker', 'Client', 'Other'] },
+    role: String,
     name: String
   }],
-  
+
   // Structured Deal Intelligence
   clientProfile: {
     budgetRange: { type: String },
@@ -32,11 +32,11 @@ const MeetingSchema: Schema = new Schema({
     discountProbability: { type: String },
     holdingPeriod: { type: String },
   },
-  
+
   dealProbabilityScore: { type: Number }, // 0 to 100
   keyConcerns: [{ type: String }],
   suggestedAction: { type: String },
-  
+
   createdAt: { type: Date, default: Date.now },
 });
 
