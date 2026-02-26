@@ -1,11 +1,13 @@
 # src/config/swagger.ts
 
 ## Responsibilities:
-- Configure OpenAPI (Swagger) specification for the project.
-- Define API metadata (title, version, description).
-- Set up security schemes (Bearer Authentication for JWT).
-- Specify the source files for JSDoc documentation.
+- Configures the OpenAPI (Swagger) specification for the API.
+- Defines metadata such as title, version, and description.
+- Sets up security definitions, including Bearer Authentication (JWT).
+- Specifies the file paths for scanning JSDoc comments to generate documentation.
 
 ## Details:
-- Uses `swagger-jsdoc` to parse JSDoc comments in route files.
-- Exports `specs` for use with `swagger-ui-express`.
+- Uses `swagger-jsdoc` to generate the specification.
+- Defines the development server URL.
+- Enables global security for all documented endpoints using JWT.
+- Exports `specs` which is consumed by `swagger-ui-express` in `app.ts`.

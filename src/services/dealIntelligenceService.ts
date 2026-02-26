@@ -119,7 +119,7 @@ Rules:
           - "deal_score": A number from 0-100 representing lead quality.
           - "score_analysis": Brief reasoning for the assigned deal score.
           - "action_points": Array of next steps for the agent.
-          - "follow_up_date": Suggested date for the next contact (calculated from current date).
+          - "follow_up_date": Suggested date for the next contact (calculated from current date). If no date is mentioned, use "Not mentioned".
           - "highlights": Key moments from the conversation.
           - "budget": Interpret the financial capacity, noting any flexibility or specific loan-to-value ratios mentioned.
           - "urgency": Evaluate the client's timeline based on verbal cues (e.g., "Ready to move" implies High Urgency).

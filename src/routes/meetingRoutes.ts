@@ -29,6 +29,11 @@ const router = express.Router();
  *                 type: string
  *                 enum: [yes, no]
  *                 description: If 'yes', use a random sample script instead of actual recording
+ *               usePrompt:
+ *                 type: string
+ *                 enum: [nirav, pankaj]
+ *                 default: nirav
+ *                 description: Which AI persona/prompt version to use for intelligence extraction
  *               recording:
  *                 type: string
  *                 format: binary
@@ -39,6 +44,8 @@ const router = express.Router();
  *         description: Validation error
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: Meeting limit reached for unverified account
  */
 router.post('/', authenticate, upload.single('recording'), createMeetingValidation, createMeeting);
 

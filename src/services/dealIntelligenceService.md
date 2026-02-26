@@ -1,19 +1,22 @@
 # src/services/dealIntelligenceService.ts
 
 ## Responsibilities:
-- Uses **Azure OpenAI (GPT-4/GPT-4o)** to transform raw transcripts into actionable intelligence.
-- Identifies the **Conversation Type** (Buyer vs Seller vs General).
-- Extracts a 1-2 line **Broker Takeaway** for quick memory recall.
-- Summarizes the meeting into an executive brief.
-- Extracts **Dynamic Key Points** based on the party (Buyer requirements vs Seller motivation).
-- Provides a structured **Client Profile** (Budget, Urgency, Financing).
-- Calculates a **Deal Probability Score (0-100)**.
-- Suggests concrete **Next Actions**.
+- Transforms raw meeting transcripts into structured, actionable intelligence using **Azure OpenAI**.
+- Supports multiple AI personas/prompt versions (`nirav` and `pankaj`) to cater to different business needs.
+- Extracts summaries, key points, broker takeaways, and deal-specific metrics.
+
+## Personas:
+- **`nirav`**: Focuses on identifying the lead type (Buyer/Seller), core requirements, and punchy broker takeaways. Provides a structured client profile and speaker attribution.
+- **`pankaj`**: Acts as a Senior Investment Strategy Consultant. Refines and professionalizes the conversation, focusing on strategic overviews, SWOT analysis of risk factors, and builder commitments.
 
 ## Key Features:
-- **Multilingual Support**: Can process transcripts containing Hindi, English, and Hinglish.
-- **Dynamic Field Extraction**: Adapts its JSON response based on what's found in the conversation (captured in `metadata`).
-- **Speaker Attribution**: Maps intelligence to specific speakers (Buyer, Seller, Broker).
+- **Persona-Based Extraction**: Returns different JSON structures based on the selected prompt version.
+- **Multilingual Support**: Effectively processes code-switching between English, Hindi, and Hinglish.
+- **Date Normalization**: Automatically converts relative dates (e.g., "next Sunday") into specific dates based on the current context.
+- **Mock Fallback**: Provides realistic mock data if the Azure OpenAI service is disabled or fails.
 
 ## Methods:
-- `extractDealIntelligence(transcript)`: Takes a string and returns a structured JSON object.
+- `extractDealIntelligence(transcript, promptUsed)`: 
+    - `transcript`: The raw text to analyze.
+    - `promptUsed`: Either `'nirav'` or `'pankaj'`.
+    - Returns an object containing the parsed `ai_response` and the `promptUsed`.

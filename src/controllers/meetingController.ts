@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import User from '@/models/User';
 import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
 import { extractDealIntelligence } from '@/services/dealIntelligenceService';
@@ -9,7 +10,22 @@ export const createMeeting = async (req: any, res: Response) => {
     const isSample = fromSample === 'yes';
     const audioUrl = req.file ? req.file.path : null;
 
-    // 1. Convert Speech to Text (STT) - Now returns { transcript, speakers }
+    // Check Verification Status and Limits
+    const user: any = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const isVerified = user.emailVerified && user.phoneVerified;
+    if (!isVerified) {
+      const meetingCount = await Meeting.countDocuments({ brokerId: req.user.id });
+      if (meetingCount >= 5) {
+        return res.status(403).json({
+          success: false,
+          message: 'Meeting limit reached for unverified accounts. Please verify your email and phone to create more meetings.'
+        });
+      }
+    }
+
+    // 1. Convert Speech to Text (STT)
     const sttResult = await transcribeAudio(audioUrl, isSample);
     console.log(`🚀 ~ meetingController.ts:14 ~ sttResult:`, sttResult);
     const transcript = sttResult?.transcript;

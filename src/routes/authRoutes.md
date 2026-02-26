@@ -1,9 +1,15 @@
 # src/routes/authRoutes.ts
 
 ## Responsibilities:
-- Define HTTP routes for user authentication.
-- Connect routes to `authController` methods.
+- Defines the API endpoints for user authentication (registration and login).
+- Maps incoming HTTP requests to the appropriate `authController` functions.
+- Applies request validation middleware to ensure input data integrity.
 
-## Routes:
-- `POST /register`: Registers a new broker.
-- `POST /login`: Authenticates a broker and returns a token.
+## Endpoints:
+- `POST /api/auth/register`: 
+    - Handles broker account creation.
+    - Validates name, email, and password.
+- `POST /api/auth/login`: 
+    - Authenticates a broker.
+    - Validates email and password format.
+    - Returns a JWT on success.

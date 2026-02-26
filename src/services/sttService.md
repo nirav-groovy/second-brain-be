@@ -1,17 +1,18 @@
 # src/services/sttService.ts
 
 ## Responsibilities:
-- Convert audio recorded by the broker into text using **Deepgram SDK**.
-- Provides both **Real-world STT** and **Sample-based Mocking** for testing.
-- Supports **Multilingual Transcription** (Auto-detecting and transcribing English, Hindi, etc., in a single recording).
-- Implements **Speaker Diarization** (Identifying who spoke what).
+- Converts meeting audio recordings into text using the **Deepgram SDK**.
+- Provides both real-world Speech-to-Text (STT) and sample-based mocking for development and testing.
+- Supports multilingual transcription and speaker diarization.
 
 ## Key Features:
-- **`language: 'multi'`**: Enabled to handle codeswitching (e.g., Hinglish).
-- **`model: 'nova-2'`**: Uses Deepgram's fastest and most accurate model.
-- **`smart_format`**: Automatically formats numbers, dates, and punctuation.
+- **`model: 'nova-2'`**: Uses Deepgram's latest model for high accuracy and low latency.
+- **`language: 'multi'`**: Handles code-switching between languages (e.g., English and Hindi).
+- **`diarize: true`**: Identifies different speakers in the conversation.
+- **`smart_format`**: Automatically applies formatting for numbers, dates, and punctuation.
 
 ## Methods:
 - `transcribeAudio(audioUrl, fromSample)`: 
-    - If `fromSample` is true, returns a randomly selected long/complex scenario from `SAMPLE_SCRIPTS`.
-    - Otherwise, performs a real transcription using the Deepgram API.
+    - `audioUrl`: Path to the local audio file.
+    - `fromSample`: Boolean flag. If `true`, returns a random mock transcript from `SAMPLE_SCRIPTS`.
+    - Returns an object containing the `transcript` (string) and an array of `speakers`.

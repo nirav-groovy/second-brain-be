@@ -1,31 +1,18 @@
 # src/models/Meeting.ts
 
 ## Responsibilities:
-- Defines the data structure for real estate meeting intelligence in MongoDB.
-- Provides a flexible schema that supports different conversation types (Buyer vs. Seller).
-- Stores both raw transcripts and AI-extracted actionable insights.
+- Defines the data structure for meeting records and AI intelligence in MongoDB.
+- Stores meeting metadata, raw transcripts, and speaker information.
+- Captures AI-generated intelligence in a flexible, simplified structure.
 
 ## Core Fields:
-- `brokerId`: Reference to the User (Broker) who owns this meeting.
-- `title`: User-provided title for the meeting.
-- `audioUrl`: URL/path to the recorded audio file.
-- `transcript`: Full raw text from the STT service.
-- `speakers`: Array of identified participants with their IDs, roles, and names.
+- `brokerId`: Reference to the `User` (Broker) who owns this meeting record.
+- `title`: Title of the meeting.
+- `audioUrl`: Link to the recorded audio file (stored locally or in cloud).
+- `transcript`: Raw text transcript generated from the speech-to-text service.
+- `speakers`: Array of speaker objects containing `speakerId`, `role`, and `name`.
+- `createdAt`: Timestamp of when the record was created.
 
-## Intelligence Fields (New Dynamic Structure):
-- `conversationType`: Identifies the primary lead (Buyer, Seller, General, or Other).
-- `summary`: A concise executive brief of the meeting.
-- `brokerTakeaway`: **1-2 line "punchy" memory-jogger** for quick recall after many days.
-- `mainKeyPoints`: Array of specific objects containing:
-    - `point`: The actual requirement, promise, or concern.
-    - `party`: Who said it (e.g., Buyer, Seller).
-    - `category`: Type of point (Financial, Requirement, Concern, Promise).
-- `dealProbabilityScore`: Numeric score (0-100) indicating the likelihood of closing the deal.
-- `suggestedAction`: AI-recommended immediate next step for the broker.
-- `metadata`: A `Mixed` type catch-all for any extra dynamic intelligence fields.
-
-## Legacy/Specific Profile Fields:
-- `clientProfile`: Structured data for budget, loan requirements, and urgency.
-- `interestSignals`: Specific preferences like BHK, floor, and Vastu.
-- `financialIntelligence`: Detailed financial data like expected rent and builder schemes.
-- `keyConcerns`: List of specific objections or worries.
+## Intelligence Fields (Simplified Structure):
+- `promptUsed`: Specifies which AI prompt version was used (`nirav` or `pankaj`).
+- `ai_response`: A `Mixed` type field that stores the complete JSON response from Azure OpenAI, containing extracted insights, summaries, and action items.

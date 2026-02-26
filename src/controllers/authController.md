@@ -1,11 +1,22 @@
-# src/controller/authController.ts
+# src/controllers/authController.ts
 
 ## Responsibilities:
-- Handle user registration requests.
-- Handle user login requests.
-- Password hashing and verification.
-- JWT token generation.
+- Manages user authentication and verification workflows.
+- Handles broker registration with multi-field profiles.
+- Provides a flexible API for requesting verification OTPs for email and phone.
+- Issues JWT tokens for authenticated sessions.
 
 ## Methods:
-- `register`: Validates if user exists, hashes password, saves new user.
-- `login`: Validates credentials, compares hashed password, returns JWT and user info.
+- `register`: 
+    - Creates a new broker account with profile details.
+    - Does NOT automatically send OTPs to avoid cluttering inboxes during simple signups.
+- `login`: 
+    - Authenticates users and returns a JWT along with their verification status.
+- `requestOTP`: 
+    - Generic endpoint for sending a 6-digit verification code.
+    - Accepts `type` ('email' or 'phone').
+    - Saves the generated OTP to the database and sends it via the appropriate service.
+- `verifyEmail`: 
+    - Validates the 6-digit OTP sent to the user's email.
+- `verifyPhone`: 
+    - Validates the 6-digit OTP sent to the user's phone via SMS.
