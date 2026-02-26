@@ -3,6 +3,7 @@ import User from '@/models/User';
 import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
 import { extractDealIntelligence } from '@/services/dealIntelligenceService';
+import { scheduleFollowUp } from '@/services/calendarService';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {
@@ -14,7 +15,7 @@ export const createMeeting = async (req: any, res: Response) => {
     const user: any = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const isVerified = user.emailVerified && user.phoneVerified;
+    const isVerified = user?.emailVerified || user?.phoneVerified || false;
     if (!isVerified) {
       const meetingCount = await Meeting.countDocuments({ brokerId: req.user.id });
       if (meetingCount >= 5) {
@@ -46,6 +47,10 @@ export const createMeeting = async (req: any, res: Response) => {
     });
 
     const savedMeeting = await newMeeting.save();
+
+    // 3. Automatically Schedule Follow-up in Calendar if date is present
+    await scheduleFollowUp(req.user.id, (savedMeeting._id as string), ai_response);
+
     return res.status(201).json({ success: true, data: savedMeeting });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
