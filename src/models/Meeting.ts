@@ -11,31 +11,9 @@ const MeetingSchema: Schema = new Schema({
     name: String
   }],
 
-  // Structured Deal Intelligence
-  clientProfile: {
-    budgetRange: { type: String },
-    loanRequirement: { type: String },
-    familySize: { type: String },
-    urgency: { type: String },
-  },
-  interestSignals: {
-    preference: { type: String }, // e.g. 2BHK vs 3BHK
-    floorPreference: { type: String },
-    vastuImportance: { type: String },
-    locationPriority: { type: String },
-    parkingRequirement: { type: String },
-  },
-  financialIntelligence: {
-    expectedRent: { type: String },
-    builderScheme: { type: String },
-    negotiationPossibility: { type: String },
-    discountProbability: { type: String },
-    holdingPeriod: { type: String },
-  },
-
-  dealProbabilityScore: { type: Number }, // 0 to 100
-  keyConcerns: [{ type: String }],
-  suggestedAction: { type: String },
+  // New Simplified Structure
+  promptUsed: { type: String, enum: ['nirav', 'pankaj'], required: true },
+  ai_response: { type: Schema.Types.Mixed }, // Stores the full JSON from Azure OpenAI
 
   createdAt: { type: Date, default: Date.now },
 });

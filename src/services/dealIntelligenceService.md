@@ -1,14 +1,19 @@
 # src/services/dealIntelligenceService.ts
 
 ## Responsibilities:
-- Use AI (GPT-4/Gemini) to process transcripts.
-- Extract structured data for:
-    - Client Profile (budget, urgency, family).
-    - Interest Signals (BHK, floor, vastu).
-    - Financial Intelligence (rent, builder scheme).
-- Calculate a closing probability score.
-- Suggest next actions for the broker.
+- Uses **Azure OpenAI (GPT-4/GPT-4o)** to transform raw transcripts into actionable intelligence.
+- Identifies the **Conversation Type** (Buyer vs Seller vs General).
+- Extracts a 1-2 line **Broker Takeaway** for quick memory recall.
+- Summarizes the meeting into an executive brief.
+- Extracts **Dynamic Key Points** based on the party (Buyer requirements vs Seller motivation).
+- Provides a structured **Client Profile** (Budget, Urgency, Financing).
+- Calculates a **Deal Probability Score (0-100)**.
+- Suggests concrete **Next Actions**.
 
-## Current Status:
-- Stubbed for now, returns a mock JSON.
-- Future: Will implement API calls with a structured prompt.
+## Key Features:
+- **Multilingual Support**: Can process transcripts containing Hindi, English, and Hinglish.
+- **Dynamic Field Extraction**: Adapts its JSON response based on what's found in the conversation (captured in `metadata`).
+- **Speaker Attribution**: Maps intelligence to specific speakers (Buyer, Seller, Broker).
+
+## Methods:
+- `extractDealIntelligence(transcript)`: Takes a string and returns a structured JSON object.

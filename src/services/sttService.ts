@@ -8,26 +8,53 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || '';
 const deepgram = createClient(DEEPGRAM_API_KEY);
 
 const SAMPLE_SCRIPTS = [
-  // (keeping existing SAMPLE_SCRIPTS)
   {
-    transcript: "Broker: Welcome to the 3BHK show flat. It's 1250 sqft. \nClient: The living room is nice. What's the final price? \nBroker: We are quoted at 85 Lakhs. \nClient: Is there any discount? I have a 20 Lakh down payment ready, looking for a loan for the rest.",
-    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Client' }]
+    transcript: `Broker: Good morning Mr. Sharma, welcome to SkyHigh Residency. Aaj hum 3BHK sample flat dekhenge.
+Client: Good morning. Haan, I've been looking for something in this area. Shela is quite developing now.
+Broker: Exactly sir. This unit is 1850 sqft. Purely Vastu compliant. Entrance is East-facing.
+Client: Okay, living room toh kaafi spacious hai. Kitchen mein utility space kitni hai?
+Broker: Utility space 6 by 4 ki hai sir. Alag se washing machine area diya hai.
+Wife: Interior kaafi achha hai, but kitchen thoda chhota lag raha hai humein. Can we expand this?
+Broker: Ma'am, structural wall hai so we can't move it, but we can provide more overhead storage. 
+Client: Budget ka kya scene hai? Last time you mentioned 1.2 Crore.
+Broker: Sir, base price 1.2 Cr hai. Including GST, Stamp Duty and 2 parking slots, it will go around 1.35 Cr.
+Client: 1.35 Cr is a bit high for me. Mera budget stretch karke maximum 1.25 Cr tak ja sakta hai inclusive of everything.
+Broker: Sir, I can talk to the developer. Agar aap aaj token dete hain, toh maybe we can work on the parking charges.
+Client: Loan ka kya process hai? I'm looking for 80% funding.
+Broker: Humare paas SBI aur HDFC ke saath tie-up hai. 3 din mein doorstep document collection ho jayega.
+Client: Theek hai, mujhe Vastu report aur carpet area breakdown mail kar do. I will discuss with my father and let you know by Sunday.`,
+    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Buyer' }, { id: 'S3', role: 'Buyer' }]
   },
   {
-    transcript: "Broker: This project has a great clubhouse. \nHusband: My office is in Shela, so the location is perfect. \nWife: But the kitchen is small. Can we get a 3BHK instead of 2BHK? \nBroker: Yes, 3BHK starts from 95 Lakhs. \nWife: That's above our 80 Lakh budget. \nHusband: We might stretch if the loan eligibility is good.",
-    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Client' }, { id: 'S3', role: 'Client' }]
+    transcript: `Broker: Hello Mr. Patel, regarding your penthouse in Satellite area. I have a potential buyer.
+Seller: Hello. Satelite waala property? Yes, tell me. What is their profile?
+Broker: He is a local businessman, looking for immediate possession. Unka budget around 4.5 Cr hai.
+Seller: 4.5 Cr? No way. I told you specifically, 5 Crore se niche main baat bhi nahi karunga. It's a prime location with a private terrace.
+Broker: Sir, market thoda slow hai abhi, and there are new projects coming up nearby. Buyer is ready with full payment in 15 days. No loan.
+Seller: Dekho, immediate payment is good, but value is value. Main 4.8 Cr tak aa sakta hoon, but not a rupee less. 
+Broker: 4.8 Cr... theek hai, let me try to push him. Usne pucha tha ki maintenance dues clear hain?
+Seller: Haan, sab clear hai. Last week hi society ka NOC liya hai for some other work. 
+Broker: Perfect. And wooden flooring ka kaam finish ho gaya?
+Seller: Almost done. 2 days mein complete ho jayega. You can show the flat on Friday evening.
+Broker: Done sir. Friday 6 PM fixed. Main buyer ko update kar deta hoon.`,
+    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Seller' }]
   },
   {
-    transcript: "Junior Broker: This is the floor plan for the penthouse. \nSenior Broker: Actually, for this client, the 4th floor garden view is better. \nClient: I agree. Vastu is very important for me. Is it North facing? \nSenior Broker: Yes, fully Vastu compliant. The price is 1.2 Crore. \nClient: I need to check with my bank if they can fund 80% of this.",
-    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Broker' }, { id: 'S3', role: 'Client' }]
-  },
-  {
-    transcript: "Broker: The expected rent here is 40,000 per month. \nPartner A: That's a 4% yield. Not bad for this area. \nPartner B: What about the holding period? \nBroker: Most investors here exit in 3 years with 20% appreciation. \nPartner A: We are looking to invest 2 Crores across two units.",
-    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Client' }, { id: 'S3', role: 'Client' }]
-  },
-  {
-    transcript: "Broker: The builder is offering a 5 Lakh discount today. \nClient: Not enough. I know the neighbor got it for 72 Lakhs. \nBroker: That was a lower floor. \nClient: Give me 72 Lakhs and I'll sign the cheque right now. No loan, full payment in 30 days.",
-    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Client' }]
+    transcript: `Broker: Sir, yeh builder ka naya scheme hai - 20:80 subvention. Aapko sirf 20% abhi dena hai, baaki possession pe.
+Client: Subvention schemes are risky. What if the project gets delayed?
+Broker: Yeh RERA registered hai sir. Completion date Dec 2026 hai. Builder ka track record kaafi strong hai.
+Client: Puraane projects ka delivery kaisa tha? I heard some issues in their last project in Gota.
+Broker: Gota waale project mein environmental clearance ka issue tha, but yahan saare papers ready hain. I can show you the file.
+Client: I need 2 car parkings side-by-side. Is it possible?
+Broker: Generally allotment random hoti hai, but for specific request we can charge 2 Lakhs extra for fixed side-by-side spots.
+Client: 2 Lakhs extra? That's too much. Society charges kitne hain?
+Broker: 3 saal ka advance maintenance 4 Lakhs hai. 
+Client: Total costing ka breakdown sheet do mujhe. Plus, I want to see the actual unit, not just the show flat.
+Broker: Construction abhi 10th floor tak pahucha hai, aapka unit 14th floor pe hai. Safety reasons ki wajah se abhi allow nahi karenge, but I can take you to the 8th floor to show the view.
+Client: Okay, let's go. View is very important for my wife. Aur terrace garden ki access sabko hai?
+Broker: Haan, it's a common amenity on the 22nd floor.
+Client: Fine, let's check the 8th floor. If view is good, we can sit and discuss numbers.`,
+    speakers: [{ id: 'S1', role: 'Broker' }, { id: 'S2', role: 'Buyer' }]
   }
 ];
 
@@ -49,7 +76,7 @@ export const transcribeAudio = async (audioUrl: string | null, fromSample: boole
         model: 'nova-2',
         smart_format: true,
         diarize: true,
-        language: 'en', // Can be changed based on need
+        language: 'multi',
       }
     );
 

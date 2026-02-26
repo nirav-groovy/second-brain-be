@@ -58,7 +58,7 @@ router.get('/', authenticate, getMeetings);
 
 /**
  * @swagger
- * /api/meetings/{id}:
+ * /api/meetings/get/{id}:
  *   get:
  *     summary: Get full deal intelligence sheet for a specific meeting
  *     tags: [Meetings]
@@ -78,6 +78,6 @@ router.get('/', authenticate, getMeetings);
  *       404:
  *         description: Meeting not found
  */
-router.get('/:id', authenticate, getMeetingDetailValidation, getMeetingDetail);
+router.get('/get/:id', authenticate, getMeetingDetailValidation, getMeetingDetail);
 
 export default router;
