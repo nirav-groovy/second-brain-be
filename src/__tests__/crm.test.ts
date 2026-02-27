@@ -44,17 +44,14 @@ describe('CRM Search & Filtering API', () => {
     const loginRes = await request(app).post('/api/auth/login').send({
       email, password: 'password123'
     });
-    console.log(`🚀 ~ crm.test.ts:47 ~ loginRes:`, loginRes);
-    console.log('Login Response Status:', loginRes.status);
-    console.log('Login Response Body:', loginRes.body);
 
     // Check if login was successful before proceeding
     if (loginRes.status !== 200) {
       throw new Error(`Login failed in beforeAll: ${JSON.stringify(loginRes.body)}`);
     }
 
-    token = loginRes.body.data.token;
-    userId = loginRes.body.data.user.id;
+    token = loginRes.body.data?.token || "";
+    userId = loginRes.body.data?.user.id || "";
     console.log('Token obtained:', token ? 'YES' : 'NO');
     console.log('User ID obtained:', userId ? 'YES' : 'NO');
 
