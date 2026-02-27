@@ -44,6 +44,7 @@ describe('CRM Search & Filtering API', () => {
     const loginRes = await request(app).post('/api/auth/login').send({
       email, password: 'password123'
     });
+    console.log(`🚀 ~ crm.test.ts:47 ~ loginRes:`, loginRes);
     console.log('Login Response Status:', loginRes.status);
     console.log('Login Response Body:', loginRes.body);
 

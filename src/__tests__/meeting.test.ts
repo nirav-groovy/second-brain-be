@@ -73,6 +73,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       email: email,
       password: 'password123',
     });
+    console.log(`🚀 ~ meeting.test.ts:76 ~ loginRes:`, loginRes);
 
     token = loginRes.body.data.token;
     userId = loginRes.body.data.user.id;
@@ -158,6 +159,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       const otherLoginRes = await request(app).post('/api/auth/login').send({
         email: otherEmail, password: 'password123'
       });
+      console.log(`🚀 ~ meeting.test.ts:162 ~ otherLoginRes:`, otherLoginRes);
       const otherToken = otherLoginRes.body.data.token;
 
       const res = await request(app)

@@ -81,6 +81,7 @@ describe('Authentication API - Comprehensive Security & Validation', () => {
         email: testUser.email,
         password: testUser.password,
       });
+      console.log(`🚀 ~ auth.test.ts:84 ~ res:`, res);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.token).toBeDefined();
@@ -113,6 +114,7 @@ describe('Authentication API - Comprehensive Security & Validation', () => {
         email: testUser.email,
         password: testUser.password,
       });
+      console.log(`🚀 ~ auth.test.ts:117 ~ loginRes:`, loginRes);
       token = loginRes.body.data.token;
     });
 
