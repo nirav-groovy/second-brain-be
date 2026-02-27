@@ -24,15 +24,39 @@ describe('CRM Search & Filtering API', () => {
 
   beforeAll(async () => {
     // 1. Create and Login User
-    const email = 'crm-tester@example.com';
-    await request(app).post('/api/auth/register').send({
-      firstName: 'CRM', lastName: 'Tester', email, phone: '1112223333', password: 'password123'
+    const email = `crm-tester-${Date.now()}@example.com`; // Ensure unique email for each test run
+    const phone = `111222${Date.now()}`;
+
+    console.log('--- CRM Test: Registering User ---');
+    console.log(`Registering with email: ${email}, phone: ${phone}`);
+    const registerRes = await request(app).post('/api/auth/register').send({
+      firstName: 'CRM', lastName: 'Tester', email, phone, password: 'password123'
     });
+    console.log('Register Response Status:', registerRes.status);
+    console.log('Register Response Body:', registerRes.body);
+
+    // Expect registration to be successful
+    if (registerRes.status !== 201) {
+      throw new Error(`Registration failed in beforeAll: ${JSON.stringify(registerRes.body)}`);
+    }
+
+    console.log('--- CRM Test: Logging in User ---');
     const loginRes = await request(app).post('/api/auth/login').send({
       email, password: 'password123'
     });
+    console.log('Login Response Status:', loginRes.status);
+    console.log('Login Response Body:', loginRes.body);
+
+    // Check if login was successful before proceeding
+    if (loginRes.status !== 200) {
+      throw new Error(`Login failed in beforeAll: ${JSON.stringify(loginRes.body)}`);
+    }
+
     token = loginRes.body.data.token;
     userId = loginRes.body.data.user.id;
+    console.log('Token obtained:', token ? 'YES' : 'NO');
+    console.log('User ID obtained:', userId ? 'YES' : 'NO');
+
 
     // 2. Seed Mock Meetings
     await Meeting.create([

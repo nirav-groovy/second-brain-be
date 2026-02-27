@@ -122,7 +122,6 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
         await Meeting.create({
           brokerId: userId,
           title: `Pre-limit Meeting ${i}`,
-          promptUsed: 'nirav',
           status: 'completed'
         });
       }
