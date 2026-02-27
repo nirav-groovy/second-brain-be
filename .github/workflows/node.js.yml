@@ -1,17 +1,16 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
-name: Node.js CI (Automated Testing)
+name: Node.js CI/CD (Automated Testing & Deployment)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -19,29 +18,48 @@ jobs:
         node-version: [20.x, 22.x]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-    - name: Run Automated Tests (Jest)
-      run: npm test
-      env:
-        # Map GitHub Secrets to Environment Variables
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-        AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
-        AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
-        SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
-        DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
-        TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-        TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-        TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
-        OPENAI_ANALYSIS_ENABLED: true
-        MONGO_URI: mongodb://localhost:27017/test # Tests use MemoryServer, but App needs a string to boot
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Automated Tests (Jest)
+        run: npm test
+        env:
+          # Map GitHub Secrets to Environment Variables for Testing
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
+          OPENAI_ANALYSIS_ENABLED: ${{ secrets.OPENAI_ANALYSIS_ENABLED }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+
+  deploy:
+    needs: build # This job depends on the 'build' job to succeed
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' # Only deploy on push to main/master branch
+
+    steps:
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 104.214.168.219 # Your Azure VM IP
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # GitHub Secret for your private SSH key
+          script: |
+            cd /home/azureuser/second-brain-be
+            git pull
+            npm install # Re-install dependencies on server for production (if any changes)
+            npm run build
+            pm2 restart 18
