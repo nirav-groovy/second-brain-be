@@ -178,6 +178,7 @@ export const getMeetingDetail = async (req: any, res: Response) => {
   try {
     const meeting = await Meeting.findOne({ _id: req.params.id, brokerId: req.user.id });
     if (!meeting) return res.status(404).json({ success: false, message: 'Meeting not found' });
+
     return res.json({ success: true, data: meeting });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
