@@ -47,7 +47,6 @@ JWT_SECRET=your_super_secret_jwt_key
 MONGO_URI=mongodb://localhost:27017/secondbrain
 
 # AI Services - Azure OpenAI
-OPENAI_ANALYSIS_ENABLED=true
 AZURE_OPENAI_API_KEY=your_azure_key
 AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
@@ -74,20 +73,24 @@ TWILIO_PHONE_NUMBER=+1234567890
 ## 🚀 Getting Started
 
 1. **Clone the repository:**
+
    ```bash
    git clone <repository-url>
    cd secondBrain
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Run the development server:**
+
    ```bash
    npm start
    ```
+
    The server will start at `http://localhost:5000`.
 
 4. **Access API Documentation:**
