@@ -2,7 +2,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import express from 'express';
-import mongoose from 'mongoose';
 import { specs } from '@/config/swagger';
 import swaggerUi from 'swagger-ui-express';
 import authRoutes from '@/routes/authRoutes';
@@ -11,8 +10,6 @@ import meetingRoutes from '@/routes/meetingRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
-const MONGO_URI = process.env.MONGO_URI || "";
 
 app.use(cors());
 app.use(express.json());
@@ -51,12 +48,4 @@ app.get('/', (req, res) => {
   res.send('AI Meeting Memory API is running');
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// MongoDB Connection
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+export default app;

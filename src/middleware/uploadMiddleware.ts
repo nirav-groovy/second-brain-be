@@ -22,7 +22,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   if (file.mimetype.startsWith('audio/')) {
     cb(null, true);
   } else {
-    cb(null, false);
+    cb(new Error('Only audio files are allowed!'));
   }
 };
 

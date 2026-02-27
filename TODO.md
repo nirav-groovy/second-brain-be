@@ -1,12 +1,14 @@
 # AI Meeting Memory + Deal Intelligence - TODO
 
 ## 1. Project Initialization
+
 - [x] npm init & install dependencies
 - [x] tsconfig.json setup (CommonJS + Path Aliases)
 - [x] Folder structure creation
 - [x] Basic Express server setup (src/app.ts)
 
 ## 2. Authentication & User Management
+
 - [x] User Model (Broker)
 - [x] Register/Login APIs
 - [x] Auth Middleware (JWT)
@@ -15,6 +17,7 @@
 - [x] **Verification Gates (Usage limits for unverified users)**
 
 ## 3. Meeting Processing (Core Logic)
+
 - [x] Meeting/Deal Model
 - [x] File upload implementation with Multer
 - [x] Recording processing endpoint
@@ -27,16 +30,19 @@
 - [x] Validation for recording file (Required)
 
 ## 4. Deal Intelligence API
+
 - [x] Get Client Cards (List/Summary)
 - [x] Get Specific Deal Detail
 - [~] Search/Filter clients (Removed per user request)
 
 ## 5. Documentation
+
 - [x] Swagger Documentation implementation
 - [x] .md files for each core file/component
 - [x] **Feature Documentation (FEATURES.md)**
 
 ## 6. Advanced Features (Post-MVP)
+
 - [x] **Auto Follow-up scheduling in Calendar**
 - [ ] Objection Detection (Deeper analysis)
 - [ ] Builder Comparison
@@ -44,10 +50,11 @@
 - [ ] **WebSocket Integration for real-time status updates**
 
 ## 7. Future Roadmap (Suggestions)
+
 - [ ] **CRM Integrations:** Push extracted lead data directly to Salesforce, HubSpot, or real-estate specific CRMs.
 - [ ] **Mobile Recording App:** A React Native/Flutter app for brokers to record meetings on the go.
 - [ ] **Automated Client Briefs:** Send a professional "Meeting Summary" email to the client automatically after the call.
 - [ ] **Advanced Analytics:** A dashboard for brokers to see trends (e.g., most common objections, average deal probability).
 - [ ] **Voice-to-Task:** Integrate with Jira/Trello/Asana to create tasks directly from meeting "Action Points".
-- [ ] **Deployment & CI/CD:** Dockerize the application and setup automated testing/deployment pipelines.
+- [-] **Deployment & CI/CD:** Dockerize the application and setup automated testing/deployment pipelines.
 - [ ] **Enhanced Speaker Diarization:** Support for more than 2-3 speakers with higher accuracy in noisy environments.

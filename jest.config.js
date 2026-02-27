@@ -9,7 +9,7 @@ module.exports = {
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
-    '!src/server.ts',
+    '!src/app.ts',
   ],
   coverageThreshold: {
     global: {
