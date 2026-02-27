@@ -2,10 +2,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists recursively to prevent ENOENT in CI/new environments
 const uploadDir = 'uploads/recordings';
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
