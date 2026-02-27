@@ -7,12 +7,15 @@
 
 ## Endpoints:
 - `POST /api/meetings`: 
-    - Processes a new meeting recording.
+    - Processes a new meeting recording from an uploaded audio file.
     - Requires `bearerAuth`.
-    - Accepts `multipart/form-data` with an audio file (`recording`) and metadata (`title`, `fromSample`, `usePrompt`).
-    - `usePrompt`: Allows selecting between different AI personas (`nirav` or `pankaj`).
+    - Accepts `multipart/form-data` with an audio file (`recording`) and a title.
 - `GET /api/meetings`: 
-    - Retrieves a list of all meetings owned by the authenticated broker.
+    - Retrieves a search-able and filter-able list of all meetings owned by the authenticated broker.
+    - Requires `bearerAuth`.
+    - Query Params: `search`, `status`, `type`, `sortBy`, `order`.
+- `GET /api/meetings/stats`:
+    - Retrieves high-level CRM statistics for the broker dashboard.
     - Requires `bearerAuth`.
 - `GET /api/meetings/get/:id`: 
     - Fetches the comprehensive deal intelligence sheet for a specific meeting ID.

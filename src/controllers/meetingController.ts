@@ -1,6 +1,5 @@
-import mongoose from 'mongoose';
 import { Response } from 'express';
-
+import mongoose from 'mongoose';
 import User from '@/models/User';
 import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
@@ -9,8 +8,7 @@ import { scheduleFollowUp } from '@/services/calendarService';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {
-    const { title, fromSample, usePrompt = 'nirav' } = req.body;
-    const isSample = fromSample === 'yes';
+    const { title } = req.body;
     const audioUrl = req.file ? req.file.path : null;
 
     // Check Verification Status and Limits
@@ -32,8 +30,7 @@ export const createMeeting = async (req: any, res: Response) => {
     const newMeeting = new Meeting({
       brokerId: req.user.id,
       title,
-      audioUrl: audioUrl || 'sample-audio-url',
-      promptUsed: usePrompt,
+      audioUrl: audioUrl,
       status: 'transcribe-generating'
     });
     const savedMeeting = await newMeeting.save();
@@ -45,7 +42,7 @@ export const createMeeting = async (req: any, res: Response) => {
     (async () => {
       try {
         // 1. Convert Speech to Text (STT)
-        const sttResult = await transcribeAudio(audioUrl, isSample);
+        const sttResult = await transcribeAudio(audioUrl);
         let mappedTranscript = sttResult?.diarized_transcript?.entries || [];
 
         savedMeeting.status = 'speakers-generating';
@@ -66,27 +63,22 @@ export const createMeeting = async (req: any, res: Response) => {
 
         // 3. Extract AI Understanding (Deal Intelligence)
         const finalTranscriptText = typeof mappedTranscript === 'string' ? mappedTranscript : JSON.stringify(mappedTranscript);
-        const { ai_response, long_transcript } = await extractDealIntelligence(finalTranscriptText, usePrompt);
+        const { ai_response, long_transcript } = await extractDealIntelligence(finalTranscriptText);
 
         // Update CRM Metadata
-        if (usePrompt === 'nirav') {
-          savedMeeting.conversationType = ai_response.conversationType || 'General';
-          savedMeeting.dealProbabilityScore = ai_response.dealProbabilityScore || 0;
+        savedMeeting.conversationType = ai_response.conversationType || 'General';
+        savedMeeting.dealProbabilityScore = ai_response.dealProbabilityScore || 0;
 
-          // Map Client Info from speakers if available
-          const client = ai_response.speakers?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
-          if (client) {
-            savedMeeting.clientName = client.name !== 'Not mentioned' ? client.name : undefined;
-          }
-        } else {
-          savedMeeting.conversationType = ai_response.purpose || 'General';
-          savedMeeting.dealProbabilityScore = ai_response.deal_score || 0;
-          savedMeeting.clientName = ai_response.client_name !== 'Under Evaluation' ? ai_response.client_name : undefined;
+        // Map Client Info from speakers or specific client_name field
+        const client = ai_response.speakers?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
+        if (ai_response.client_name && ai_response.client_name !== 'Not mentioned') {
+          savedMeeting.clientName = ai_response.client_name;
+        } else if (client) {
+          savedMeeting.clientName = client.name !== 'Not mentioned' ? client.name : undefined;
         }
 
         savedMeeting.transcript = finalTranscriptText;
         savedMeeting.ai_response = ai_response;
-        savedMeeting.promptUsed = usePrompt;
         savedMeeting.long_transcript = long_transcript;
         savedMeeting.status = 'completed';
         await savedMeeting.save();

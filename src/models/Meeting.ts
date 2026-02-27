@@ -19,7 +19,6 @@ const MeetingSchema: Schema = new Schema({
   dealProbabilityScore: { type: Number, min: 0, max: 100 },
 
   // New Simplified Structure
-  promptUsed: { type: String, enum: ['nirav', 'pankaj'], required: true },
   ai_response: { type: Schema.Types.Mixed }, // Stores the full JSON from Azure OpenAI
   long_transcript: { type: Boolean, default: false },
 

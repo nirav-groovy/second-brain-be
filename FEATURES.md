@@ -13,7 +13,6 @@ This document provides a comprehensive overview of all features implemented in t
 
 ### 2. Meeting Recording & Management
 - **Audio Upload:** Support for uploading meeting recordings in various formats (handled via `multer`).
-- **Sample Mode:** Ability to simulate a meeting using predefined high-quality "Hinglish" and Gujarati scripts for testing and demonstration purposes.
 - **Meeting Dashboard:** A centralized view for brokers to list and track all their recorded meetings.
 - **Detailed Intelligence Sheets:** In-depth view for each meeting, containing the full transcript, AI-extracted insights, and metadata.
 
@@ -23,7 +22,7 @@ This document provides a comprehensive overview of all features implemented in t
 - **Speaker Diarization:** Automatically identifies different speakers in the audio (e.g., Speaker 0, Speaker 1).
 
 ### 4. AI Deal Intelligence (Azure OpenAI)
-- **Automated Insight Extraction:** Extracts structured data from raw transcripts using advanced LLM prompts.
+- **Automated Insight Extraction:** Extracts structured data from raw transcripts using a specialized real estate deal intelligence engine.
 - **Multilingual-to-English Intelligence:** Automatically translates and interprets conversations in Hindi, Gujarati, or Hinglish into professional English deal sheets.
 - **Conversation Classification:** Automatically identifies if a meeting is with a **Buyer, Seller, or General Inquiry**.
 - **Strategic Summary:** Generates an executive summary and a "Broker Takeaway" to help remember core details weeks later.
@@ -48,18 +47,15 @@ This document provides a comprehensive overview of all features implemented in t
 
 ## 🛠️ Minor & Supporting Features
 
-### 1. AI Persona Selection
-- **Customizable Extraction Styles:** Support for different AI personas (`nirav` for punchy broker takeaways vs. `pankaj` for senior investment consultant style reports).
-
-### 2. Verification-Based Usage Limits
+### 1. Verification-Based Usage Limits
 - **Verification Gates:** Unverified users are restricted to a maximum of **5 meetings**, incentivizing account verification via email and phone.
 - **Account Verification:** Seamless OTP-based flow for verifying broker identity.
 
-### 3. Background Processing
+### 2. Background Processing
 - **Asynchronous Workflow:** Responds immediately to the user while processing heavy STT and AI tasks in the background to ensure a smooth UI experience.
 - **Real-time Status Updates:** Tracks meeting state through: `transcribe-generating` ➔ `speakers-generating` ➔ `intelligence-generating` ➔ `completed`.
 
-### 4. Developer Tools & Infrastructure
+### 3. Developer Tools & Infrastructure
 - **Interactive API Documentation:** Full **Swagger/OpenAPI** integration available at `/api-docs`.
 - **Static Asset Management:** Secure serving of uploaded audio files via `/uploads`.
 - **Centralized Error Handling:** Global middleware to handle file upload limits, validation errors, and server failures.

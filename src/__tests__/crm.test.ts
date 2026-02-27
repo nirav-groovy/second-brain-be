@@ -43,7 +43,6 @@ describe('CRM Search & Filtering API', () => {
         conversationType: 'Seller',
         dealProbabilityScore: 90,
         status: 'completed',
-        promptUsed: 'nirav',
         transcript: 'I want to sell my property in Satellite area.'
       },
       {
@@ -53,7 +52,6 @@ describe('CRM Search & Filtering API', () => {
         conversationType: 'Buyer',
         dealProbabilityScore: 85,
         status: 'completed',
-        promptUsed: 'nirav',
         transcript: 'Looking for a flat in Shela.'
       },
       {
@@ -63,14 +61,12 @@ describe('CRM Search & Filtering API', () => {
         conversationType: 'Buyer',
         dealProbabilityScore: 40,
         status: 'completed',
-        promptUsed: 'pankaj',
         transcript: 'Just asking about prices.'
       },
       {
         brokerId: userId,
         title: 'Failed Recording',
         status: 'failed',
-        promptUsed: 'nirav'
       }
     ]);
   });
