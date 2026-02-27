@@ -1,5 +1,5 @@
 import express from 'express';
-import { createMeeting, getMeetings, getMeetingDetail } from '@/controllers/meetingController';
+import { createMeeting, getMeetings, getMeetingDetail, getCRMStats } from '@/controllers/meetingController';
 import { authenticate } from '@/middleware/authMiddleware';
 import { upload } from '@/middleware/uploadMiddleware';
 import { createMeetingValidation, getMeetingDetailValidation } from '@/middleware/validations/meetingValidation';
@@ -22,30 +22,16 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - title
+ *               - recording
  *             properties:
  *               title:
  *                 type: string
- *               fromSample:
- *                 type: string
- *                 enum: [yes, no]
- *                 description: If 'yes', use a random sample script instead of actual recording
- *               usePrompt:
- *                 type: string
- *                 enum: [nirav, pankaj]
- *                 default: nirav
- *                 description: Which AI persona/prompt version to use for intelligence extraction
  *               recording:
  *                 type: string
  *                 format: binary
  *     responses:
  *       201:
- *         description: Meeting processed and intelligence extracted
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Meeting limit reached for unverified account
+ *         description: Meeting processed
  */
 router.post('/', authenticate, upload.single('recording'), createMeetingValidation, createMeeting);
 
@@ -53,21 +39,61 @@ router.post('/', authenticate, upload.single('recording'), createMeetingValidati
  * @swagger
  * /api/meetings:
  *   get:
- *     summary: Get all meetings for current broker
- *     tags: [Meetings]
+ *     summary: Search and Filter Meetings (CRM View)
+ *     tags: [Meetings, CRM]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - name: search
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Search by title, client name, or transcript content
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [completed, failed, transcribe-generating, speakers-generating, intelligence-generating]
+ *       - name: type
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [Buyer, Seller, General, Other]
+ *       - name: sortBy
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, dealProbabilityScore, title]
+ *       - name: order
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
  *     responses:
  *       200:
- *         description: List of meeting cards
+ *         description: Filtered list of meeting cards
  */
 router.get('/', authenticate, getMeetings);
 
 /**
  * @swagger
+ * /api/meetings/stats:
+ *   get:
+ *     summary: Get high-level CRM stats for the broker
+ *     tags: [CRM]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Broker CRM dashboard statistics
+ */
+router.get('/stats', authenticate, getCRMStats);
+
+/**
+ * @swagger
  * /api/meetings/get/{id}:
  *   get:
- *     summary: Get full deal intelligence sheet for a specific meeting
+ *     summary: Get full deal intelligence sheet
  *     tags: [Meetings]
  *     security:
  *       - bearerAuth: []
@@ -79,11 +105,7 @@ router.get('/', authenticate, getMeetings);
  *           type: string
  *     responses:
  *       200:
- *         description: Full meeting detail with all deal intelligence fields
- *       400:
- *         description: Invalid meeting ID format
- *       404:
- *         description: Meeting not found
+ *         description: Full meeting detail
  */
 router.get('/get/:id', authenticate, getMeetingDetailValidation, getMeetingDetail);
 

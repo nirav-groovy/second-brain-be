@@ -205,7 +205,7 @@ describe('Meeting API - Security, Validation & Business Logic', () => {
 
     beforeAll(async () => {
       const meeting = await Meeting.findOne({ brokerId: userId });
-      meetingId = meeting?._id.toString() || '';
+      meetingId = meeting?.id.toString() || '';
     });
 
     it('should fetch details for a valid meeting ID', async () => {

@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
+
 import User from '@/models/User';
 import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
@@ -52,7 +54,6 @@ export const createMeeting = async (req: any, res: Response) => {
         // 2. Map Speaker Names if available from the transcript
         if (sttResult?.diarized_transcript && sttResult?.diarized_transcript.entries) {
           const updatedTranscript = await identifySpeakers(JSON.stringify(sttResult?.diarized_transcript.entries));
-          console.log(`🚀 ~ meetingController.ts:148 ~ updatedTranscript:`, updatedTranscript);
           if (typeof updatedTranscript === 'string') {
             mappedTranscript = updatedTranscript as any;
           } else if (updatedTranscript && Array.isArray(updatedTranscript)) {
@@ -66,6 +67,22 @@ export const createMeeting = async (req: any, res: Response) => {
         // 3. Extract AI Understanding (Deal Intelligence)
         const finalTranscriptText = typeof mappedTranscript === 'string' ? mappedTranscript : JSON.stringify(mappedTranscript);
         const { ai_response, long_transcript } = await extractDealIntelligence(finalTranscriptText, usePrompt);
+
+        // Update CRM Metadata
+        if (usePrompt === 'nirav') {
+          savedMeeting.conversationType = ai_response.conversationType || 'General';
+          savedMeeting.dealProbabilityScore = ai_response.dealProbabilityScore || 0;
+
+          // Map Client Info from speakers if available
+          const client = ai_response.speakers?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
+          if (client) {
+            savedMeeting.clientName = client.name !== 'Not mentioned' ? client.name : undefined;
+          }
+        } else {
+          savedMeeting.conversationType = ai_response.purpose || 'General';
+          savedMeeting.dealProbabilityScore = ai_response.deal_score || 0;
+          savedMeeting.clientName = ai_response.client_name !== 'Under Evaluation' ? ai_response.client_name : undefined;
+        }
 
         savedMeeting.transcript = finalTranscriptText;
         savedMeeting.ai_response = ai_response;
@@ -91,8 +108,75 @@ export const createMeeting = async (req: any, res: Response) => {
 
 export const getMeetings = async (req: any, res: Response) => {
   try {
-    const meetings = await Meeting.find({ brokerId: req.user.id }).sort({ createdAt: -1 });
-    return res.json({ success: true, data: meetings });
+    const {
+      search,
+      status,
+      type,
+      sortBy = 'createdAt',
+      order = 'desc'
+    } = req.query;
+
+    const query: any = { brokerId: req.user.id };
+
+    // Text Search
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { clientName: { $regex: search, $options: 'i' } },
+        { transcript: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Status Filter
+    if (status) {
+      query.status = status;
+    }
+
+    // Type Filter (Buyer/Seller/General)
+    if (type) {
+      query.conversationType = type;
+    }
+
+    const sortOptions: any = {};
+    sortOptions[sortBy as string] = order === 'desc' ? -1 : 1;
+
+    const meetings = await Meeting.find(query).sort(sortOptions);
+
+    return res.json({
+      success: true,
+      count: meetings.length,
+      data: meetings
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const getCRMStats = async (req: any, res: Response) => {
+  try {
+    const stats = await Meeting.aggregate([
+      { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalDeals: { $sum: 1 },
+          avgProbability: { $avg: '$dealProbabilityScore' },
+          buyers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Buyer'] }, 1, 0] } },
+          sellers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Seller'] }, 1, 0] } },
+          highProbabilityDeals: { $sum: { $cond: [{ $gte: ['$dealProbabilityScore', 80] }, 1, 0] } }
+        }
+      }
+    ]);
+
+    const result = stats.length > 0 ? stats[0] : {
+      totalDeals: 0,
+      avgProbability: 0,
+      buyers: 0,
+      sellers: 0,
+      highProbabilityDeals: 0
+    };
+
+    return res.json({ success: true, data: result });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }

@@ -29,17 +29,20 @@
 - [x] Centralized Meeting Validation (src/middleware/validations/meetingValidation.ts)
 - [x] Validation for recording file (Required)
 
-## 4. Deal Intelligence API
+## 4. Deal Intelligence & CRM API
 
 - [x] Get Client Cards (List/Summary)
 - [x] Get Specific Deal Detail
-- [~] Search/Filter clients (Removed per user request)
+- [x] **Advanced Search/Filter (by Client Name, Title, Transcript, Type)**
+- [x] **High-level CRM Stats for Broker Dashboard**
 
 ## 5. Documentation
 
 - [x] Swagger Documentation implementation
 - [x] .md files for each core file/component
 - [x] **Feature Documentation (FEATURES.md)**
+- [x] **Automated Testing Suite (33+ Tests across Auth, Meetings, CRM)**
+- [x] **CI/CD Pipeline (GitHub Actions)**
 
 ## 6. Advanced Features (Post-MVP)
 

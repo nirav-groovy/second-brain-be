@@ -11,6 +11,13 @@ const MeetingSchema: Schema = new Schema({
     name: String
   }],
 
+  // CRM Fields extracted from AI response
+  clientName: { type: String, index: true },
+  clientPhone: { type: String },
+  clientEmail: { type: String },
+  conversationType: { type: String, enum: ['Buyer', 'Seller', 'General', 'Other', 'Under Evaluation'], index: true },
+  dealProbabilityScore: { type: Number, min: 0, max: 100 },
+
   // New Simplified Structure
   promptUsed: { type: String, enum: ['nirav', 'pankaj'], required: true },
   ai_response: { type: Schema.Types.Mixed }, // Stores the full JSON from Azure OpenAI

@@ -38,6 +38,12 @@ This document provides a comprehensive overview of all features implemented in t
 - **Intelligent Date Detection:** AI identifies mentioned dates or relative times (e.g., "next Sunday") and converts them into specific dates.
 - **Calendar Integration:** Automatically creates follow-up events in the system's calendar based on the AI's "suggested next action".
 
+### 7. Broker CRM & Search System
+- **Advanced Searching:** Search through all meetings by **Client Name**, **Meeting Title**, or even specific keywords within the **Transcript**.
+- **Contextual Filtering:** Filter your deal pipeline by status (e.g., completed, failed) or lead type (Buyer vs. Seller).
+- **CRM Dashboard Stats:** High-level aggregation of broker performance, including total deals, average deal probability, and lead distribution.
+- **Automated Client Profiling:** AI automatically extracts and indexes client names and deal types directly into the CRM database.
+
 ---
 
 ## 🛠️ Minor & Supporting Features
