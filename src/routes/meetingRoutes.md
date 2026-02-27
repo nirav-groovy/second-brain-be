@@ -9,7 +9,8 @@
 - `POST /api/meetings`: 
     - Processes a new meeting recording.
     - Requires `bearerAuth`.
-    - Accepts `multipart/form-data` with an audio file (`recording`) and metadata (`title`, `fromSample`).
+    - Accepts `multipart/form-data` with an audio file (`recording`) and metadata (`title`, `fromSample`, `usePrompt`).
+    - `usePrompt`: Allows selecting between different AI personas (`nirav` or `pankaj`).
 - `GET /api/meetings`: 
     - Retrieves a list of all meetings owned by the authenticated broker.
     - Requires `bearerAuth`.

@@ -211,6 +211,14 @@ const transcribeAudioSarvam = async (audioUrl: string) => {
     if (fileResults.successful.length > 0) {
       await job.downloadOutputs("./output");
       console.log(`\nDownloaded ${fileResults.successful.length} file(s) to: ./output`);
+
+      const path = require('path');
+      const originalFileName = path.basename(audioUrl);
+      const outputFilePath = path.join(process.cwd(), 'output', `${originalFileName}.json`);
+      if (fs.existsSync(outputFilePath)) {
+        const fileContent = fs.readFileSync(outputFilePath, 'utf8');
+        return JSON.parse(fileContent);
+      }
     }
 
     return {

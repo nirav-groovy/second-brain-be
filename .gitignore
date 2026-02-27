@@ -26,3 +26,4 @@ temp/
 gii-pro/*
 uploads/*
 package-lock.json
+output/*

@@ -31,7 +31,11 @@ export const extractDealIntelligence = async (transcript: string, promptUsed: 'n
 
   try {
     const MAX_CHARS = 12000;
-    const safeTranscript = transcript.length > MAX_CHARS ? transcript.slice(0, MAX_CHARS) : transcript;
+    const is_max_char = transcript.length > MAX_CHARS;
+    const safeTranscript = is_max_char ? transcript.slice(0, MAX_CHARS) : transcript;
+    if (is_max_char) {
+      console.log("Transcript is too long, truncating to 12000 characters");
+    }
 
     const response = await azureClient.chat.completions.create({
       model: AZURE_OPENAI_DEPLOYMENT_NAME!,
@@ -43,10 +47,56 @@ export const extractDealIntelligence = async (transcript: string, promptUsed: 'n
     const text = response?.choices?.[0]?.message?.content || "";
     const cleanJson = text.replace(/```json|```/g, "").trim();
 
-    return { ai_response: JSON.parse(cleanJson), promptUsed };
+    return { ai_response: JSON.parse(cleanJson), promptUsed, long_transcript: is_max_char };
   } catch (error: any) {
     console.error("Azure OpenAI failed:", error.message);
     return { ai_response: getMockData(transcript, promptUsed), promptUsed };
+  }
+};
+
+export const identifySpeakers = async (transcript: string) => {
+  if (!isEnabled || !AZURE_OPENAI_API_KEY) return null;
+
+  try {
+    const response = await azureClient.chat.completions.create({
+      model: AZURE_OPENAI_DEPLOYMENT_NAME!,
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert at identifying speaker names and translating multilingual Indian real estate transcripts (English, Hindi, Gujarati) into English.
+          Your goal is to map Speaker IDs (e.g., "0", "1") to their real names and roles based on conversational cues.
+          Carefully deduce who is speaking. For example, if Speaker 0 says "Hello Nirav", then Speaker 1 is likely Nirav. If Speaker 0 says "I am Nirav", then Speaker 0 is Nirav.
+          Be sensitive to Indian naming conventions and honorifics (like -bhai, -ben, Mr., Shrimati).
+          Also, identify that the speaker is one of: "Buyer", "Seller", "Broker", or "Other".`
+        },
+        {
+          role: "user",
+          content: `Analyze this JSON transcript, map the speakers to their real names and roles, and translate the conversation to English.
+          
+          Transcript:
+          """
+          ${transcript}
+          """
+          
+          Do NOT return JSON. Return the transcript formatted exactly as plain text, translating everything to English.
+          Format each line as:
+          "{Speaker Name or 'Speaker X'} ({Role}): {Translated English text}"
+          
+          Example:
+          Speaker 0 (Broker): Hello, Mister Patel. Regarding your penthouse in Satellite Area,
+          Mister Patel (Seller): Tell me, what is his profile?
+          `
+        }
+      ],
+      temperature: 0,
+      max_tokens: 4000
+    });
+
+    const text = response?.choices?.[0]?.message?.content || "";
+    return text.trim();
+  } catch (error) {
+    console.error("Speaker identification failed:", error);
+    return null;
   }
 };
 
@@ -68,13 +118,13 @@ const getPrompt = (transcript: string, from: 'nirav' | 'pankaj'): ChatCompletion
       {
         role: "user",
         content: `
-Analyze the following transcript. 
+Analyze the following multilingual JSON transcript array (can contain English, Hindi, Gujarati, mixed, Marathi, etc). 
 1. Identify if the primary lead is a Buyer, Seller, or Other.
 2. Extract the main key points specifically for that lead.
 3. Provide a concise summary and a 1-2 line "brokerTakeaway".
 4. Provide a suggested next action.
 
-Transcript:
+JSON Transcript:
 """
 ${transcript}
 """
@@ -133,7 +183,7 @@ Rules:
       {
         role: "user",
         content: `
-Analyze this transcript:
+Analyze the following multilingual JSON transcript array (can contain English, Hindi, Gujarati, mixed, Marathi, etc):
 """
 ${transcript}
 """

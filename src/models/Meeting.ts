@@ -14,6 +14,13 @@ const MeetingSchema: Schema = new Schema({
   // New Simplified Structure
   promptUsed: { type: String, enum: ['nirav', 'pankaj'], required: true },
   ai_response: { type: Schema.Types.Mixed }, // Stores the full JSON from Azure OpenAI
+  long_transcript: { type: Boolean, default: false },
+
+  status: {
+    type: String,
+    enum: ['transcribe-generating', 'speakers-generating', 'intelligence-generating', 'completed', 'failed'],
+    default: 'completed'
+  },
 
   createdAt: { type: Date, default: Date.now },
 });
