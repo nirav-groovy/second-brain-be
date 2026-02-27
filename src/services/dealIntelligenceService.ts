@@ -14,17 +14,18 @@ const {
 
 const isEnabled = OPENAI_ANALYSIS_ENABLED === "true";
 
-const azureClient = new OpenAI({
+// Initialize Azure OpenAI only if key is present to prevent crashes in CI/Tests
+const azureClient = AZURE_OPENAI_API_KEY ? new OpenAI({
   apiKey: AZURE_OPENAI_API_KEY,
   baseURL: `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT_NAME}`,
   defaultQuery: { "api-version": AZURE_OPENAI_API_VERSION },
   defaultHeaders: {
     "api-key": AZURE_OPENAI_API_KEY!
   }
-});
+}) : null;
 
-export const extractDealIntelligence = async (transcript: string): Promise<{ ai_response: any, long_transcript: boolean }> => {
-  if (!isEnabled || !AZURE_OPENAI_API_KEY) {
+export const extractDealIntelligence = async (transcript: string) => {
+  if (!isEnabled || !azureClient || !AZURE_OPENAI_API_KEY) {
     console.warn("Azure OpenAI disabled or missing key, returning mock data");
     return { ai_response: getMockData(), long_transcript: false };
   }
@@ -52,7 +53,7 @@ export const extractDealIntelligence = async (transcript: string): Promise<{ ai_
 };
 
 export const identifySpeakers = async (transcript: string) => {
-  if (!isEnabled || !AZURE_OPENAI_API_KEY) return null;
+  if (!isEnabled || !azureClient || !AZURE_OPENAI_API_KEY) return null;
 
   try {
     const response = await azureClient.chat.completions.create({

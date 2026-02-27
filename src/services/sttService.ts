@@ -7,7 +7,9 @@ dotenv.config();
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY || '';
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || '';
-const deepgram = createClient(DEEPGRAM_API_KEY);
+
+// Initialize Deepgram only if API key is present to prevent crashes in CI/Tests
+const deepgram = DEEPGRAM_API_KEY ? createClient(DEEPGRAM_API_KEY) : null;
 
 export const transcribeAudio = async (audioUrl: string | null) => {
   if (!audioUrl) throw new Error('Audio file path is required for STT');
@@ -18,6 +20,10 @@ export const transcribeAudio = async (audioUrl: string | null) => {
 
 // Keeping Deepgram as a fallback or secondary option
 const transcribeAudioDeepgram = async (audioUrl: string) => {
+  if (!deepgram) {
+    throw new Error('Deepgram API key is missing. Cannot transcribe.');
+  }
+
   console.log(`Transcribing real audio from: ${audioUrl} using Deepgram Nova-3 Multilingual`);
 
   try {
@@ -85,8 +91,12 @@ const transcribeAudioDeepgram = async (audioUrl: string) => {
   }
 };
 
-// Keeping Deepgram as a fallback or secondary option
 const transcribeAudioSarvam = async (audioUrl: string) => {
+  if (!SARVAM_API_KEY) {
+    console.warn("Sarvam API key missing, attempting Deepgram fallback");
+    return await transcribeAudioDeepgram(audioUrl);
+  }
+
   try {
     const client = new SarvamAIClient({
       apiSubscriptionKey: SARVAM_API_KEY
@@ -131,6 +141,7 @@ const transcribeAudioSarvam = async (audioUrl: string) => {
     };
   } catch (err: any) {
     console.error('Sarvam Error:', err);
-    throw new Error('Speech-to-text conversion failed via Sarvam: ' + err.message);
+    // Fallback if Sarvam fails
+    return await transcribeAudioDeepgram(audioUrl);
   }
 };
