@@ -1,9 +1,11 @@
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+
 import app from '../app';
-import User from '../models/User';
 import Meeting from '../models/Meeting';
+import { initializeDatabase } from '../utils/initDb';
+import { MeetingStatus } from '../types/enums';
 
 let mongoServer: MongoMemoryServer;
 
@@ -11,6 +13,7 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
+  await initializeDatabase();
 });
 
 afterAll(async () => {
@@ -57,7 +60,7 @@ describe('CRM Search & Filtering API', () => {
         clientName: 'Mister Patel',
         conversationType: 'Seller',
         dealProbabilityScore: 90,
-        status: 'completed',
+        status: MeetingStatus.COMPLETED,
         transcript: 'I want to sell my property in Satellite area.'
       },
       {
@@ -66,7 +69,7 @@ describe('CRM Search & Filtering API', () => {
         clientName: 'Nirav',
         conversationType: 'Buyer',
         dealProbabilityScore: 85,
-        status: 'completed',
+        status: MeetingStatus.COMPLETED,
         transcript: 'Looking for a flat in Shela.'
       },
       {
@@ -75,13 +78,13 @@ describe('CRM Search & Filtering API', () => {
         clientName: 'Anjali',
         conversationType: 'Buyer',
         dealProbabilityScore: 40,
-        status: 'completed',
+        status: MeetingStatus.COMPLETED,
         transcript: 'Just asking about prices.'
       },
       {
         brokerId: userId,
         title: 'Failed Recording',
-        status: 'failed',
+        status: MeetingStatus.FAILED,
       }
     ]);
   });
@@ -118,12 +121,12 @@ describe('CRM Search & Filtering API', () => {
 
   it('should filter by status', async () => {
     const res = await request(app)
-      .get('/api/meetings?status=failed')
+      .get(`/api/meetings?status=${MeetingStatus.FAILED}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
     expect(res.body.count).toBe(1);
-    expect(res.body.data[0].status).toBe('failed');
+    expect(res.body.data[0].status).toBe(MeetingStatus.FAILED);
   });
 
   it('should sort by deal probability (desc)', async () => {

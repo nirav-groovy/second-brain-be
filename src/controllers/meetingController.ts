@@ -5,6 +5,7 @@ import Meeting from '@/models/Meeting';
 import { transcribeAudio } from '@/services/sttService';
 import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
 import { scheduleFollowUp } from '@/services/calendarService';
+import { UserStatus, MeetingStatus } from '@/types/enums';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {
@@ -14,6 +15,13 @@ export const createMeeting = async (req: any, res: Response) => {
     // Check Verification Status and Limits
     const user: any = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (user.status !== UserStatus.ACTIVE) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your profile is incomplete. Please complete your profile by selecting a category before creating meetings.'
+      });
+    }
 
     const isVerified = user?.emailVerified || user?.phoneVerified || false;
     if (!isVerified) {
@@ -31,7 +39,7 @@ export const createMeeting = async (req: any, res: Response) => {
       brokerId: req.user.id,
       title,
       audioUrl: audioUrl,
-      status: 'transcribe-generating'
+      status: MeetingStatus.TRANSCRIBE_GENERATING
     });
     const savedMeeting = await newMeeting.save();
 
@@ -45,7 +53,7 @@ export const createMeeting = async (req: any, res: Response) => {
         const sttResult = await transcribeAudio(audioUrl);
         let mappedTranscript = sttResult?.diarized_transcript?.entries || [];
 
-        savedMeeting.status = 'speakers-generating';
+        savedMeeting.status = MeetingStatus.SPEAKERS_GENERATING;
         await savedMeeting.save();
 
         // 2. Map Speaker Names if available from the transcript
@@ -58,7 +66,7 @@ export const createMeeting = async (req: any, res: Response) => {
           }
         }
 
-        savedMeeting.status = 'intelligence-generating';
+        savedMeeting.status = MeetingStatus.INTELLIGENCE_GENERATING;
         await savedMeeting.save();
 
         // 3. Extract AI Understanding (Deal Intelligence)
@@ -86,14 +94,14 @@ export const createMeeting = async (req: any, res: Response) => {
         savedMeeting.transcript = finalTranscriptText;
         savedMeeting.ai_response = ai_response;
         savedMeeting.long_transcript = long_transcript;
-        savedMeeting.status = 'completed';
+        savedMeeting.status = MeetingStatus.COMPLETED;
         await savedMeeting.save();
 
         // 4. Automatically Schedule Follow-up in Calendar if date is present
         await scheduleFollowUp(req.user.id, (savedMeeting._id as string), ai_response);
       } catch (bgError: any) {
         console.error('Background processing failed for meeting:', savedMeeting._id, bgError);
-        savedMeeting.status = 'failed';
+        savedMeeting.status = MeetingStatus.FAILED;
         await savedMeeting.save();
       }
     })();
@@ -153,7 +161,7 @@ export const getMeetings = async (req: any, res: Response) => {
 export const getCRMStats = async (req: any, res: Response) => {
   try {
     const stats = await Meeting.aggregate([
-      { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: 'completed' } },
+      { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: MeetingStatus.COMPLETED } },
       {
         $group: {
           _id: null,

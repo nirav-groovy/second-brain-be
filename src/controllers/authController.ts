@@ -1,10 +1,12 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import User from '@/models/User';
 import { Request, Response } from 'express';
-import { sendEmailOTP } from '@/services/emailService';
+
+import User from '@/models/User';
+import { UserStatus } from '@/types/enums';
 import { sendSMSOTP } from '@/services/smsService';
+import { sendEmailOTP } from '@/services/emailService';
 
 dotenv.config();
 
@@ -32,6 +34,7 @@ export const register = async (req: Request, res: Response) => {
       email,
       phone,
       password: hashedPassword,
+      status: UserStatus.ACTIVE
     });
 
     await newUser.save();
@@ -54,7 +57,7 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     return res.json({
       success: true,
       data: {
@@ -65,7 +68,9 @@ export const login = async (req: Request, res: Response) => {
           lastName: user.lastName,
           email: user.email,
           emailVerified: user.emailVerified,
-          phoneVerified: user.phoneVerified
+          phoneVerified: user.phoneVerified,
+          role: user.role,
+          status: user.status
         }
       }
     });

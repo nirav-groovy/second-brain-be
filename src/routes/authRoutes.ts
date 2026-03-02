@@ -20,7 +20,7 @@ const router = express.Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new broker
+ *     summary: Register a new user
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -57,7 +57,7 @@ router.post('/register', registerValidation, register);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Authenticate a broker
+ *     summary: Authenticate a user
  *     tags: [Auth]
  *     requestBody:
  *       required: true

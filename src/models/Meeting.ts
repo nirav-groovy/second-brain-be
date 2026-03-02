@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { MeetingStatus } from '@/types/enums';
 
 const MeetingSchema: Schema = new Schema({
   brokerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -24,8 +25,8 @@ const MeetingSchema: Schema = new Schema({
 
   status: {
     type: String,
-    enum: ['transcribe-generating', 'speakers-generating', 'intelligence-generating', 'completed', 'failed'],
-    default: 'completed'
+    enum: Object.values(MeetingStatus),
+    default: MeetingStatus.COMPLETED
   },
 
   createdAt: { type: Date, default: Date.now },

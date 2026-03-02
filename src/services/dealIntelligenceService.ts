@@ -11,7 +11,6 @@ const {
   AZURE_OPENAI_API_VERSION,
 } = process.env;
 
-
 // Initialize Azure OpenAI only if key is present to prevent crashes in CI/Tests
 const azureClient = AZURE_OPENAI_API_KEY ? new OpenAI({
   apiKey: AZURE_OPENAI_API_KEY,
@@ -32,6 +31,9 @@ export const extractDealIntelligence = async (transcript: string) => {
     const MAX_CHARS = 12000;
     const is_max_char = transcript.length > MAX_CHARS;
     const safeTranscript = is_max_char ? transcript.slice(0, MAX_CHARS) : transcript;
+    if (is_max_char) {
+      console.log("Transcript is too long, truncating to 12000 characters");
+    }
 
     const response = await azureClient.chat.completions.create({
       model: AZURE_OPENAI_DEPLOYMENT_NAME!,

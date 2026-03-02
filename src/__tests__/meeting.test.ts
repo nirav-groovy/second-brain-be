@@ -1,11 +1,13 @@
+import fs from 'fs';
+import path from 'path';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+
 import app from '../app';
-import User from '../models/User';
 import Meeting from '../models/Meeting';
-import path from 'path';
-import fs from 'fs';
+import { MeetingStatus } from '../types/enums';
+import { initializeDatabase } from '../utils/initDb';
 
 let mongoServer: MongoMemoryServer;
 
@@ -36,6 +38,7 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
+  await initializeDatabase();
 
   // Create a dummy audio file for testing
   const dummyAudioPath = path.join(__dirname, 'test-audio.mp3');
@@ -66,7 +69,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       lastName: 'Tester',
       email: email,
       phone: '9000000000',
-      password: 'password123',
+      password: 'password123'
     });
 
     const loginRes = await request(app).post('/api/auth/login').send({
@@ -93,7 +96,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.status).toBe('transcribe-generating');
+      expect(res.body.data.status).toBe(MeetingStatus.TRANSCRIBE_GENERATING);
     });
 
     it('should fail to create a meeting without a title', async () => {
@@ -122,7 +125,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
         await Meeting.create({
           brokerId: userId,
           title: `Pre-limit Meeting ${i}`,
-          status: 'completed'
+          status: MeetingStatus.COMPLETED
         });
       }
 
