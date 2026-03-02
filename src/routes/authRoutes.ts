@@ -1,15 +1,15 @@
 import express from 'express';
-import { 
-  register, 
-  login, 
-  verifyEmail, 
-  verifyPhone, 
-  requestOTP 
+import {
+  register,
+  login,
+  verifyEmail,
+  verifyPhone,
+  requestOTP
 } from '@/controllers/authController';
 import { authenticate } from '@/middleware/authMiddleware';
-import { 
-  registerValidation, 
-  loginValidation, 
+import {
+  registerValidation,
+  loginValidation,
   otpValidation,
   requestOTPValidation
 } from '@/middleware/validations/authValidation';
@@ -44,10 +44,6 @@ const router = express.Router();
  *               phone:
  *                 type: string
  *               password:
- *                 type: string
- *               companyName:
- *                 type: string
- *               licenseNumber:
  *                 type: string
  *     responses:
  *       201:

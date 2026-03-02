@@ -6,10 +6,6 @@ const UserSchema: Schema = new Schema({
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  
-  // Broker specific fields
-  companyName: { type: String },
-  licenseNumber: { type: String },
 
   // Verification Status
   emailVerified: { type: Boolean, default: false },

@@ -16,8 +16,8 @@ const generateOTP = () => {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { firstName, lastName, email, phone, password, companyName, licenseNumber } = req.body;
-    
+    const { firstName, lastName, email, phone, password } = req.body;
+
     const existingEmail = await User.findOne({ email });
     if (existingEmail) return res.status(400).json({ success: false, message: 'Email already exists' });
 
@@ -32,15 +32,13 @@ export const register = async (req: Request, res: Response) => {
       email,
       phone,
       password: hashedPassword,
-      companyName,
-      licenseNumber,
     });
 
     await newUser.save();
 
-    return res.status(201).json({ 
-      success: true, 
-      message: 'User registered successfully. Please request an OTP to verify your account.' 
+    return res.status(201).json({
+      success: true,
+      message: 'User registered successfully.'
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
@@ -57,19 +55,19 @@ export const login = async (req: Request, res: Response) => {
     if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
-    return res.json({ 
-      success: true, 
-      data: { 
-        token, 
-        user: { 
-          id: user._id, 
+    return res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
           emailVerified: user.emailVerified,
           phoneVerified: user.phoneVerified
-        } 
-      } 
+        }
+      }
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
