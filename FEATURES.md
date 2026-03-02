@@ -7,64 +7,77 @@ This document provides a comprehensive overview of all features implemented in t
 ## 🚀 Major Features
 
 ### 1. User Authentication & Security
+
 - **Secure Registration & Login:** JWT-based authentication for brokers to manage their data securely.
 - **Dual-Factor Verification (OTP):** Verification of both **Email** and **Phone Number** via One-Time Passwords (OTP) to ensure high-quality lead data and account security.
-- **Role-Based Access Control:** Middleware protection for all meeting-related endpoints.
+- **Role-Based Access Control (RBAC):** Implementation of `UserRole` (Admin, User) to protect sensitive operations.
+- **User Status Management:** Global tracking of account states (`active`, `inactive`) via `UserStatus` enums.
 
-### 2. Meeting Recording & Management
-- **Audio Upload:** Support for uploading meeting recordings in various formats (handled via `multer`).
-- **Meeting Dashboard:** A centralized view for brokers to list and track all their recorded meetings.
+### 2. Project Management
+
+- **Project CRUD:** Full capability to Create, Read, Update, and Delete projects.
+- **Hierarchical Organization:** Users can organize their meetings under specific projects, facilitating better deal tracking and client management.
+- **Project-Based Context:** Ensures all meeting intelligence is contextualized within a specific business goal or client engagement.
+
+### 3. Meeting Recording & Management
+
+- **Audio Upload:** Support for uploading meeting recordings in various formats (handled via `multer`). **Project ID is optional;** if not provided, the system automatically creates or assigns an "Unnamed Project" for organization.
+- **Meeting Dashboard:** A centralized view for brokers to list and track all their recorded meetings, filterable by project.
 - **Detailed Intelligence Sheets:** In-depth view for each meeting, containing the full transcript, AI-extracted insights, and metadata.
 
-### 3. Multilingual Speech-to-Text (STT)
+### 4. Multilingual Speech-to-Text (STT)
+
 - **Indian Language Support:** Optimized for Indian contexts, supporting **English, Hindi, Gujarati, and code-mixed (Hinglish)** conversations.
 - **Dual-Engine Architecture:** Primary processing via **Sarvam AI** (specialized for Indian languages) with **Deepgram** as a secondary/fallback option.
-- **Speaker Diarization:** Automatically identifies different speakers in the audio (e.g., Speaker 0, Speaker 1).
+- **Speaker Diarization:** Automatically identifies different speakers in the audio using `MeetingStatus` enums to track progress.
 
-### 4. AI Deal Intelligence (Azure OpenAI)
-- **Automated Insight Extraction:** Extracts structured data from raw transcripts using a specialized real estate deal intelligence engine.
+### 5. AI Deal Intelligence (Azure OpenAI)
+
+- **Standardized Real Estate Engine:** Uses a high-quality real estate prompt to extract structured data from raw transcripts.
 - **Multilingual-to-English Intelligence:** Automatically translates and interprets conversations in Hindi, Gujarati, or Hinglish into professional English deal sheets.
 - **Conversation Classification:** Automatically identifies if a meeting is with a **Buyer, Seller, or General Inquiry**.
 - **Strategic Summary:** Generates an executive summary and a "Broker Takeaway" to help remember core details weeks later.
-- **Deal Probability Scoring:** AI-driven score (0-100) indicating the likelihood of the deal closing based on verbal cues.
+- **Deal Probability Scoring:** AI-driven score (0-100) indicating the likelihood of the deal closing.
 - **Client Profile Mapping:** Automatically identifies budget ranges, loan requirements, and urgency levels.
 
-### 5. Smart Speaker Identification & Translation
-- **Contextual Identity Mapping:** Uses AI to deduce real names and roles (Buyer/Seller/Broker) from conversational cues.
-- **Automatic Translation:** Seamlessly translates multilingual Indian conversations (Hindi/Gujarati/Marathi) into professional English transcripts.
-
 ### 6. Automated Follow-up Scheduling
-- **Intelligent Date Detection:** AI identifies mentioned dates or relative times (e.g., "next Sunday") and converts them into specific dates.
+
+- **Intelligent Date Detection:** AI identifies mentioned dates or relative times and converts them into specific dates.
 - **Calendar Integration:** Automatically creates follow-up events in the system's calendar based on the AI's "suggested next action".
 
 ### 7. Broker CRM & Search System
-- **Advanced Searching:** Search through all meetings by **Client Name**, **Meeting Title**, or even specific keywords within the **Transcript**.
-- **Contextual Filtering:** Filter your deal pipeline by status (e.g., completed, failed) or lead type (Buyer vs. Seller).
-- **CRM Dashboard Stats:** High-level aggregation of broker performance, including total deals, average deal probability, and lead distribution.
-- **Automated Client Profiling:** AI automatically extracts and indexes client names and deal types directly into the CRM database.
+
+- **Advanced Searching:** Search through all meetings by **Client Name**, **Meeting Title**, or keywords within the **Transcript**.
+- **Project-Based Filtering:** Filter the deal pipeline by specific **Projects**, status, or lead type.
+- **CRM Dashboard Stats:** High-level aggregation of performance, including total deals, average deal probability, and lead distribution.
 
 ---
 
 ## 🛠️ Minor & Supporting Features
 
 ### 1. Verification-Based Usage Limits
-- **Verification Gates:** Unverified users are restricted to a maximum of **5 meetings**, incentivizing account verification via email and phone.
+
+- **Verification Gates:** Unverified users are restricted to a maximum of **5 meetings**, incentivizing account verification.
 - **Account Verification:** Seamless OTP-based flow for verifying broker identity.
 
 ### 2. Background Processing
-- **Asynchronous Workflow:** Responds immediately to the user while processing heavy STT and AI tasks in the background to ensure a smooth UI experience.
-- **Real-time Status Updates:** Tracks meeting state through: `transcribe-generating` ➔ `speakers-generating` ➔ `intelligence-generating` ➔ `completed`.
+
+- **Enum-Driven Workflow:** Tracks meeting state through standardized enums: `TRANSCRIBE_GENERATING` ➔ `SPEAKERS_GENERATING` ➔ `INTELLIGENCE_GENERATING` ➔ `COMPLETED`.
+- **Asynchronous Execution:** Responds immediately to the user while performing heavy AI tasks in the background.
 
 ### 3. Developer Tools & Infrastructure
+
 - **Interactive API Documentation:** Full **Swagger/OpenAPI** integration available at `/api-docs`.
 - **Static Asset Management:** Secure serving of uploaded audio files via `/uploads`.
 - **Centralized Error Handling:** Global middleware to handle file upload limits, validation errors, and server failures.
-- **Validation Layer:** Strict request validation using `express-validator` for all critical inputs (Auth, Meetings).
+- **Validation Layer:** Strict request validation using `express-validator` and `isMongoId` checks for all critical inputs.
 
 ---
 
 ## 📈 Technical Stack
+
 - **Backend:** Node.js, TypeScript, Express.
 - **Database:** MongoDB (Mongoose).
 - **AI Services:** Azure OpenAI (GPT-4o), Sarvam AI, Deepgram.
-- **Communications:** Twilio (SMS), SendGrid/SMTP (Email).
+- **Communications:** Twilio (SMS), SMTP (Email).
+- **Testing:** Jest, Supertest, MongoDB Memory Server.

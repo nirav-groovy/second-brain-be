@@ -1,16 +1,39 @@
-import { Response } from 'express';
 import mongoose from 'mongoose';
+import { Response } from 'express';
+
 import User from '@/models/User';
 import Meeting from '@/models/Meeting';
+import Project from '@/models/Project';
 import { transcribeAudio } from '@/services/sttService';
-import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
-import { scheduleFollowUp } from '@/services/calendarService';
 import { UserStatus, MeetingStatus } from '@/types/enums';
+import { getPaginationMetadata } from '@/utils/pagination';
+import { scheduleFollowUp } from '@/services/calendarService';
+import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {
-    const { title } = req.body;
+    const { title, projectId } = req.body;
     const audioUrl = req.file ? req.file.path : null;
+
+    let effectiveProjectId = projectId;
+
+    if (projectId) {
+      // Verify project exists and belongs to user
+      const project = await Project.findOne({ _id: projectId, ownerId: req.user.id });
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    } else {
+      // Create or find an "Unnamed Project"
+      let unnamedProject = await Project.findOne({ name: 'Unnamed Project', ownerId: req.user.id });
+      if (!unnamedProject) {
+        unnamedProject = new Project({
+          name: 'Unnamed Project',
+          description: 'Default project for meetings without a specified project.',
+          ownerId: req.user.id
+        });
+        await unnamedProject.save();
+      }
+      effectiveProjectId = unnamedProject._id;
+    }
 
     // Check Verification Status and Limits
     const user: any = await User.findById(req.user.id);
@@ -37,6 +60,7 @@ export const createMeeting = async (req: any, res: Response) => {
     // Create meeting entry with initial status
     const newMeeting = new Meeting({
       brokerId: req.user.id,
+      projectId: effectiveProjectId,
       title,
       audioUrl: audioUrl,
       status: MeetingStatus.TRANSCRIBE_GENERATING
@@ -118,11 +142,22 @@ export const getMeetings = async (req: any, res: Response) => {
       search,
       status,
       type,
+      projectId,
       sortBy = 'createdAt',
-      order = 'desc'
+      order = 'desc',
+      page = 1,
+      limit = 10
     } = req.query;
 
+    const currentPage = Number(page);
+    const pageSize = Number(limit);
+    const skip = (currentPage - 1) * pageSize;
+
     const query: any = { brokerId: req.user.id };
+
+    if (projectId) {
+      query.projectId = projectId;
+    }
 
     // Text Search
     if (search) {
@@ -146,12 +181,24 @@ export const getMeetings = async (req: any, res: Response) => {
     const sortOptions: any = {};
     sortOptions[sortBy as string] = order === 'desc' ? -1 : 1;
 
-    const meetings = await Meeting.find(query).sort(sortOptions);
+    // Get total count for pagination
+    const totalCount = await Meeting.countDocuments(query);
+
+    // Fetch paginated data
+    const meetings = await Meeting.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize);
+
+    // Get pagination metadata
+    const pagination = await getPaginationMetadata(totalCount, currentPage, pageSize);
 
     return res.json({
       success: true,
-      count: meetings.length,
-      data: meetings
+      data: {
+        data: meetings,
+        pagination
+      }
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });

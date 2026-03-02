@@ -51,11 +51,19 @@ describe('CRM Search & Filtering API', () => {
     token = loginRes.body.data?.token || "";
     userId = loginRes.body.data?.user.id || "";
 
+    // Create project
+    const projectRes = await request(app)
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'CRM Test Project' });
+    const projectId = projectRes.body.data?._id || "";
+
 
     // 2. Seed Mock Meetings
     await Meeting.create([
       {
         brokerId: userId,
+        projectId,
         title: 'Meeting with Mr. Patel',
         clientName: 'Mister Patel',
         conversationType: 'Seller',
@@ -65,6 +73,7 @@ describe('CRM Search & Filtering API', () => {
       },
       {
         brokerId: userId,
+        projectId,
         title: 'High interest 3BHK',
         clientName: 'Nirav',
         conversationType: 'Buyer',
@@ -74,6 +83,7 @@ describe('CRM Search & Filtering API', () => {
       },
       {
         brokerId: userId,
+        projectId,
         title: 'Initial Inquiry',
         clientName: 'Anjali',
         conversationType: 'Buyer',
@@ -83,6 +93,7 @@ describe('CRM Search & Filtering API', () => {
       },
       {
         brokerId: userId,
+        projectId,
         title: 'Failed Recording',
         status: MeetingStatus.FAILED,
       }
@@ -95,7 +106,7 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
+    expect(res.body.pagination.totalCount).toBe(1);
     expect(res.body.data[0].clientName).toBe('Mister Patel');
   });
 
@@ -105,7 +116,7 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
+    expect(res.body.pagination.totalCount).toBe(1);
     expect(res.body.data[0].title).toBe('High interest 3BHK');
   });
 
@@ -115,7 +126,7 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(2);
+    expect(res.body.pagination.totalCount).toBe(2);
     expect(res.body.data.every((m: any) => m.conversationType === 'Buyer')).toBe(true);
   });
 
@@ -125,7 +136,7 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
+    expect(res.body.pagination.totalCount).toBe(1);
     expect(res.body.data[0].status).toBe(MeetingStatus.FAILED);
   });
 

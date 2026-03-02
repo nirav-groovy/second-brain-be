@@ -6,7 +6,7 @@ This document outlines the test cases for each API endpoint in the system. Use t
 
 ## 🔐 1. Authentication APIs (`/api/auth`)
 
-### 1.1 Register a New Broker
+### 1.1 Register a New User
 
 - **Endpoint:** `POST /api/auth/register`
 - **Request Body (JSON):**
@@ -21,70 +21,66 @@ This document outlines the test cases for each API endpoint in the system. Use t
 }
 ```
 
-- **Success Criteria (201 Created):**
-  - Returns message "User registered successfully".
-- **Error Cases (400 Bad Request):**
-  - Missing required fields.
-  - Email already exists.
+- **Success Criteria:** Returns status `201 Created`. User `status` is `active`.
 
 ### 1.2 Login
 
 - **Endpoint:** `POST /api/auth/login`
-- **Request Body (JSON):**
-
-```json
-{
-  "email": "john.doe@example.com",
-  "password": "Password123"
-}
-```
-
-- **Success Criteria (200 OK):**
-  - Returns `token` (JWT) and `user` data object.
+- **Success Criteria:** Returns `token` (JWT) and `user` data (including `role` and `status`).
 
 ---
 
-## 🎙️ 2. Meeting APIs (`/api/meetings`)
+## 📁 2. Project APIs (`/api/projects`)
 
-### 2.1 Process a New Meeting (Real Audio)
+### 2.1 Create a Project
+
+- **Endpoint:** `POST /api/projects`
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body:**
+
+```json
+{
+  "name": "New Property Launch",
+  "description": "Meetings related to the downtown project"
+}
+```
+
+- **Success Criteria:** 201 Created. Project saved with `ownerId`.
+
+### 2.2 List Projects
+
+- **Endpoint:** `GET /api/projects`
+- **Success Criteria:** Returns an array of projects owned by the user.
+
+---
+
+## 🎙️ 3. Meeting APIs (`/api/meetings`)
+
+### 3.1 Process a New Meeting
 
 - **Endpoint:** `POST /api/meetings`
 - **Headers:** `Authorization: Bearer <token>`, `Content-Type: multipart/form-data`
 - **Form Data:**
-  - `title`: "Client Site Visit - Apartment 4B"
+  - `title`: "Client Inquiry - 3BHK"
+  - `projectId`: "valid_project_mongo_id" (Optional - if missing, "Unnamed Project" is used)
   - `recording`: [Attach .mp3/.wav/.m4a file]
-- **Success Criteria (201 Created):**
-  - Returns initial meeting object with `status: "transcribe-generating"`.
-- **Error Cases:**
-  - `400`: Missing title or recording file.
-  - `403`: Meeting limit reached (if user is unverified and already has 5 meetings).
+- **Success Criteria:** 201 Created. Returns meeting object with `status: "TRANSCRIBE_GENERATING"`. If `projectId` was missing, the object will contain the ID of an automatically managed "Unnamed Project".
 
-### 2.2 List All Meetings
+### 3.2 List All Meetings (with Filtering)
 
-- **Endpoint:** `GET /api/meetings`
-- **Headers:** `Authorization: Bearer <token>`
-- **Success Criteria (200 OK):**
-  - Returns an array of meeting objects.
-
-### 2.3 Get Meeting Intelligence Detail
-
-- **Endpoint:** `GET /api/meetings/get/:id`
-- **Headers:** `Authorization: Bearer <token>`
-- **Success Criteria (200 OK):**
-  - Returns full meeting details with transcript and AI intelligence.
+- **Endpoint:** `GET /api/meetings?projectId=<id>&type=Buyer`
+- **Success Criteria:** Returns meetings filtered by the specified project and lead type.
 
 ---
 
-## 📅 3. CRM & Dashboard APIs (`/api/meetings`)
+## 📅 4. CRM & Dashboard APIs (`/api/meetings`)
 
-### 3.1 Search & Filter
-
-- **Endpoint:** `GET /api/meetings?search=Patel&type=Seller`
-- **Success Criteria (200 OK):**
-  - Returns filtered results for specific clients or property types.
-
-### 3.2 CRM Statistics
+### 4.1 CRM Statistics
 
 - **Endpoint:** `GET /api/meetings/stats`
-- **Success Criteria (200 OK):**
-  - Returns aggregated data (total deals, average probability, lead counts).
+- **Success Criteria:** Returns aggregated data (total deals, average probability, lead distribution) for all `COMPLETED` meetings.
+
+### 4.2 Search Intelligence
+
+- **Endpoint:** `GET /api/meetings?search=Budget`
+- **Success Criteria:** Returns meetings where search term appears in title, client name, or transcript.

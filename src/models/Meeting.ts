@@ -3,6 +3,7 @@ import { MeetingStatus } from '@/types/enums';
 
 const MeetingSchema: Schema = new Schema({
   brokerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
   title: { type: String, required: true },
   audioUrl: { type: String }, // Link to recorded audio (S3 or local)
   transcript: { type: String }, // Raw transcript from STT

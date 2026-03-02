@@ -59,6 +59,7 @@ afterAll(async () => {
 describe('Meeting API - Comprehensive Security, Validation & Business Logic', () => {
   let token: string;
   let userId: string;
+  let projectId: string;
   const dummyAudioPath = path.join(__dirname, 'test-audio.mp3');
 
   beforeAll(async () => {
@@ -79,11 +80,18 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
 
     token = loginRes.body.data?.token || "";
     userId = loginRes.body.data?.user.id || "";
+
+    // Create a test project
+    const projectRes = await request(app)
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Test Project' });
+    projectId = projectRes.body.data?._id || "";
   });
 
   describe('POST /api/meetings', () => {
     it('should fail to create a meeting without authentication', async () => {
-      const res = await request(app).post('/api/meetings').send({ title: 'Unauthorized' });
+      const res = await request(app).post('/api/meetings').send({ title: 'Unauthorized', projectId });
       expect(res.status).toBe(401);
     });
 
@@ -92,21 +100,51 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
         .post('/api/meetings')
         .set('Authorization', `Bearer ${token}`)
         .attach('recording', dummyAudioPath)
-        .field('title', 'Audio Test');
+        .field('title', 'Audio Test')
+        .field('projectId', projectId);
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe(MeetingStatus.TRANSCRIBE_GENERATING);
+      expect(res.body.data.projectId).toBe(projectId);
     });
 
     it('should fail to create a meeting without a title', async () => {
       const res = await request(app)
         .post('/api/meetings')
         .set('Authorization', `Bearer ${token}`)
-        .attach('recording', dummyAudioPath);
+        .attach('recording', dummyAudioPath)
+        .field('projectId', projectId);
 
       expect(res.status).toBe(400);
-      expect(res.body.errors[0].msg).toBe('Title is required');
+      expect(res.body.errors.find((e: any) => e.msg === 'Title is required')).toBeDefined();
+    });
+
+    it('should successfully create a meeting without a projectId (attaches to Unnamed Project)', async () => {
+      const res = await request(app)
+        .post('/api/meetings')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('recording', dummyAudioPath)
+        .field('title', 'Unnamed Project Test');
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.projectId).toBeDefined();
+      
+      const meeting = await Meeting.findById(res.body.data._id).populate('projectId');
+      expect((meeting?.projectId as any).name).toBe('Unnamed Project');
+    });
+
+    it('should fail if projectId format is invalid', async () => {
+      const res = await request(app)
+        .post('/api/meetings')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('recording', dummyAudioPath)
+        .field('title', 'Invalid Project Test')
+        .field('projectId', 'invalid-id');
+
+      expect(res.status).toBe(400);
+      expect(res.body.errors.find((e: any) => e.msg === 'Invalid projectId format')).toBeDefined();
     });
 
     it('should fail if recording file is missing', async () => {
@@ -124,6 +162,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       for (let i = 0; i < 4; i++) {
         await Meeting.create({
           brokerId: userId,
+          projectId,
           title: `Pre-limit Meeting ${i}`,
           status: MeetingStatus.COMPLETED
         });
@@ -134,7 +173,8 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
         .post('/api/meetings')
         .set('Authorization', `Bearer ${token}`)
         .attach('recording', dummyAudioPath)
-        .field('title', 'Limit Breaker');
+        .field('title', 'Limit Breaker')
+        .field('projectId', projectId);
 
       expect(res.status).toBe(403);
       expect(res.body.message).toContain('Meeting limit reached');
@@ -163,8 +203,15 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       });
       const otherToken = otherLoginRes.body.data?.token || "";
 
+      // Create project for other broker
+      const otherProjectRes = await request(app)
+        .post('/api/projects')
+        .set('Authorization', `Bearer ${otherToken}`)
+        .send({ name: 'Other Project' });
+      const otherProjectId = otherProjectRes.body.data?._id || "";
+
       const res = await request(app)
-        .get('/api/meetings')
+        .get(`/api/meetings?projectId=${otherProjectId}`)
         .set('Authorization', `Bearer ${otherToken}`);
 
       expect(res.status).toBe(200);

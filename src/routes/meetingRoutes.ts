@@ -22,9 +22,12 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - title
+ *               - projectId
  *               - recording
  *             properties:
  *               title:
+ *                 type: string
+ *               projectId:
  *                 type: string
  *               recording:
  *                 type: string
@@ -59,6 +62,11 @@ router.post('/', authenticate, upload.single('recording'), createMeetingValidati
  *         schema:
  *           type: string
  *           enum: [Buyer, Seller, General, Other]
+ *       - name: projectId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by Project ID
  *       - name: sortBy
  *         in: query
  *         schema:
