@@ -28,17 +28,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Debug JWT_SECRET
-        run: |
-          if [[ -n "${{ secrets.JWT_SECRET }}" ]]; then
-            echo "JWT_SECRET length: ${{ secrets.JWT_SECRET_LENGTH }}"
-          else
-            echo "JWT_SECRET is not set or is empty."
-          fi
-        env:
-          JWT_SECRET_LENGTH: ${{ secrets.JWT_SECRET && format('{0}', secrets.JWT_SECRET.length) || '0' }}
-        shell: bash
-
       - name: Run Automated Tests (Jest)
         run: npm test
         env:
@@ -61,6 +50,16 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' # Only deploy on push to main/master branch
 
     steps:
+      - name: Verify SSH_PRIVATE_KEY presence
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::SSH_PRIVATE_KEY is missing or empty in GitHub Secrets. Deployment will fail."
+            exit 1
+          fi
+          echo "SSH_PRIVATE_KEY is present (length: ${#SSH_KEY})"
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Deploy to Azure VM via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -68,8 +67,17 @@ jobs:
           username: azureuser
           key: ${{ secrets.SSH_PRIVATE_KEY }} # GitHub Secret for your private SSH key
           script: |
-            cd /home/azureuser/second-brain-be
+            # Try both possible paths found in documentation
+            if [ -d "/home/azureuser/second-brain-be" ]; then
+              cd /home/azureuser/second-brain-be
+            else
+              echo "Deployment directory not found!"
+              exit 1
+            fi
+
             git pull
-            npm install # Re-install dependencies on server for production (if any changes)
+            npm install
+            rm -rf dist/
             npm run build
-            pm2 restart 18
+            # Restart by name 'api' (preferred) or by ID '18'
+            pm2 restart api || pm2 restart 18 || pm2 start dist/server.js --name api

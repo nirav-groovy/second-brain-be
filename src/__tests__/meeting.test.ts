@@ -73,7 +73,6 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       email: email,
       password: 'password123',
     });
-    console.log(`🚀 ~ meeting.test.ts:76 ~ loginRes:`, loginRes.body.data);
 
     token = loginRes.body.data?.token || "";
     userId = loginRes.body.data?.user.id || "";

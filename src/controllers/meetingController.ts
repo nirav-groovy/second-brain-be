@@ -63,7 +63,13 @@ export const createMeeting = async (req: any, res: Response) => {
 
         // 3. Extract AI Understanding (Deal Intelligence)
         const finalTranscriptText = typeof mappedTranscript === 'string' ? mappedTranscript : JSON.stringify(mappedTranscript);
-        const { ai_response, long_transcript } = await extractDealIntelligence(finalTranscriptText);
+        const result = await extractDealIntelligence(finalTranscriptText);
+
+        if (!result || !result.ai_response) {
+          throw new Error('AI Intelligence extraction failed to return valid response');
+        }
+
+        const { ai_response, long_transcript } = result;
 
         // Update CRM Metadata
         savedMeeting.conversationType = ai_response.conversationType || 'General';
