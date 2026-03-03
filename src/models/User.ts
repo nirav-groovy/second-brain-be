@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { UserRole, UserStatus } from '@/types/enums';
 
 const UserSchema: Schema = new Schema({
   firstName: { type: String, required: true },
@@ -6,10 +7,6 @@ const UserSchema: Schema = new Schema({
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  
-  // Broker specific fields
-  companyName: { type: String },
-  licenseNumber: { type: String },
 
   // Verification Status
   emailVerified: { type: Boolean, default: false },
@@ -20,6 +17,18 @@ const UserSchema: Schema = new Schema({
   emailOTPExpires: { type: Date },
   phoneOTP: { type: String },
   phoneOTPExpires: { type: Date },
+
+  // Role and Status fields
+  role: {
+    type: String,
+    enum: Object.values(UserRole),
+    default: UserRole.USER
+  },
+  status: {
+    type: String,
+    enum: Object.values(UserStatus),
+    default: UserStatus.ACTIVE
+  },
 
   createdAt: { type: Date, default: Date.now },
 });

@@ -11,7 +11,6 @@ const {
   AZURE_OPENAI_API_VERSION,
 } = process.env;
 
-
 // Initialize Azure OpenAI only if key is present to prevent crashes in CI/Tests
 const azureClient = AZURE_OPENAI_API_KEY ? new OpenAI({
   apiKey: AZURE_OPENAI_API_KEY,
@@ -33,6 +32,7 @@ export const extractDealIntelligence = async (transcript: string) => {
     const is_max_char = transcript.length > MAX_CHARS;
     const safeTranscript = is_max_char ? transcript.slice(0, MAX_CHARS) : transcript;
 
+    console.log(`[AI] Extracting intelligence for transcript (${transcript.length} chars)...`);
     const response = await azureClient.chat.completions.create({
       model: AZURE_OPENAI_DEPLOYMENT_NAME!,
       messages: getPrompt(safeTranscript),
@@ -41,11 +41,12 @@ export const extractDealIntelligence = async (transcript: string) => {
     });
 
     const text = response?.choices?.[0]?.message?.content || "";
+    console.log(`[AI] Raw intelligence response: ${text.slice(0, 500)}...`);
     const cleanJson = text.replace(/```json|```/g, "").trim();
 
     return { ai_response: JSON.parse(cleanJson), long_transcript: is_max_char };
   } catch (error: any) {
-    console.error("Azure OpenAI failed:", error.message);
+    console.error("Azure OpenAI extraction failed:", error.message);
     return { ai_response: getMockData(), long_transcript: false };
   }
 };
@@ -54,16 +55,18 @@ export const identifySpeakers = async (transcript: string) => {
   if (!azureClient || !AZURE_OPENAI_API_KEY) return null;
 
   try {
+    console.log(`[AI] Identifying speakers for transcript (${transcript.length} chars)...`);
     const response = await azureClient.chat.completions.create({
       model: AZURE_OPENAI_DEPLOYMENT_NAME!,
       messages: [
         {
           role: "system",
-          content: `You are an expert at identifying speaker names and translating multilingual Indian real estate transcripts (English, Hindi, Gujarati) into English.
-          Your goal is to map Speaker IDs (e.g., "0", "1") to their real names and roles based on conversational cues.
-          Carefully deduce who is speaking. For example, if Speaker 0 says "Hello Nirav", then Speaker 1 is likely Nirav. If Speaker 0 says "I am Nirav", then Speaker 0 is Nirav.
+          content: `You are an expert at identifying speaker names and roles from professional transcripts. 
+          The conversations can be in English, Hindi, Gujarati, or code-mixed.
+          Your goal is to map Speaker IDs (e.g., "0", "1") to their names and logical roles (e.g., "Doctor", "Patient", "Interviewer", "Candidate") based on conversational cues.
+          Carefully deduce who is speaking. For example, if Speaker 0 says "Hello Nirav", then Next Speaker is likely Nirav. If Speaker 0 says "I am Nirav", then Speaker 0 is Nirav.
           Be sensitive to Indian naming conventions and honorifics (like -bhai, -ben, Mr., Shrimati).
-          Also, identify that the speaker is one of: "Buyer", "Seller", "Broker", or "Other".`
+          CRITICAL: Ensure that distinct speakers have distinct names and roles. Do not assign the same name to different roles unless it is explicitly clear they share the same name.`
         },
         {
           role: "user",
@@ -85,6 +88,7 @@ export const identifySpeakers = async (transcript: string) => {
     });
 
     const text = response?.choices?.[0]?.message?.content || "";
+    console.log(`[AI] Raw speaker identification response: ${text.slice(0, 500)}...`);
     return text.trim();
   } catch (error) {
     console.error("Speaker identification failed:", error);
@@ -98,47 +102,63 @@ const getPrompt = (transcript: string): ChatCompletionMessageParam[] => {
   return [
     {
       role: "system",
-      content: `You are an expert real estate deal intelligence engine. Today's date is ${currentDate}.
+      content: `You are an expert omni-industry conversation intelligence engine. Today's date is ${currentDate}.
       If anyone mentions a day (e.g., "next Sunday") or a relative time, convert it to a specific date in the format: DD-MMM-YYYY (Day).
       Example: If today is Wednesday, 25-Feb-2026, and someone says "next Sunday", use "01-Mar-2026 (Sunday)".
-      
-      Your goal is to help brokers understand who they talked to (Buyer vs Seller) and what the most critical points were for each party.
-      The transcript may be multilingual. Return strictly valid JSON.`
+      IMPORTANT: This date conversion MUST be applied in EVERY field where a day or relative time is mentioned, including 'mainKeyPoints', 'summary', and 'suggestedAction'.
+
+      Identify the industry and nature of the meeting automatically. 
+      Your goal is to analyze multilingual transcripts from various professions (Real Estate, Healthcare, Education, Legal, Tech, etc.) and return strictly valid JSON.`
     },
     {
       role: "user",
       content: `
-Analyze the following multilingual JSON transcript array (can contain English, Hindi, Gujarati, mixed, Marathi, etc). 
-1. Identify if the primary lead is a Buyer, Seller, or Other.
-2. Extract the main key points specifically for that lead.
-3. Provide a concise summary and a 1-2 line "brokerTakeaway".
-4. Provide a suggested next action.
+Analyze the following multilingual transcript (can contain English, Hindi, Gujarati, mixed, Marathi, etc). 
+1. Detect the Industry and Nature of the conversation (as arrays).
+2. Identify participants and map them to logical industry roles.
+3. Extract key commitments, requirements, and financial markers.
+4. Provide a concise summary and a "suggestedAction" with a specific date.
+5. Create an "actionItems" array specifically for tasks and follow-ups.
 
-JSON Transcript:
+Transcript:
 """
 ${transcript}
 """
 
 Return JSON structure:
 {
-  "conversationType": "Buyer | Seller | General | Other",
-  "summary": "Executive summary",
-  "brokerTakeaway": "1-2 line punchy takeaway to help the broker remember the core of this conversation after many days",
+  "detectedContext": {
+    "industry": ["e.g., Real Estate", "e.g., Legal"],
+    "nature": ["e.g., Sales", "e.g., Consultation"]
+  },
+  "conversationType": "Primary intent of the conversation",
+  "summary": "High-level overview of the meeting. Include specific dates for any mentioned days.",
+  "keyTakeaway": "1-2 line punchy takeaway to help remember the core of this conversation",
   "mainKeyPoints": [
-    { "point": "The specific detail/requirement/promise", "party": "Buyer | Seller | Broker", "category": "Financial | Requirement | Concern | Promise" }
+    { "point": "The specific detail/requirement/promise. Include specific dates for any mentioned days.", "party": "Mapped Role (e.g., Patient, Buyer)", "category": "Financial | Requirement | Concern | Medical | Technical" }
   ],
-  "clientProfile": { "budgetRange": "string or Not mentioned", "loanRequirement": "string or Not mentioned", "urgency": "string or Not mentioned" },
-  "dealProbabilityScore": number (0-100)
-  "suggestedAction": "Clear next step for the broker",
-  "speakers": [ { "id": "Speaker ID from transcript", "role": "Buyer | Seller | Broker | Unknown", "name": "Name if mentioned" } ],
+  "participantProfiles": [
+    {
+      "id": "Speaker ID from transcript",
+      "name": "Name of person",
+      "role": "Detected Role",
+      "attributes": { "budget_or_salary": "If applicable", "urgency_or_priority": "High | Medium | Low", "key_concern": "Main blocker or interest" }
+    }
+  ],
+  "actionItems": [
+    { "date": "DD-MMM-YYYY (Day)", "task": "Specific task to be performed", "performedBy": "Role or Name of person responsible" }
+  ],
+  "priorityScore": number (0-100),
+  "suggestedAction": "Clear next step. MUST INCLUDE A SPECIFIC DATE in DD-MMM-YYYY format if mentioned or implied.",
   "metadata": { "anyOtherRelevantInfo": "Dynamic fields based on conversation" },
-  "client_name": "Name of the buyer or seller if identified"
+  "client_name": "Primary client/lead name identified"
 }
 
 Rules:
 - Be precise about who said what.
-- If it's a Seller, focus on listing price, property condition, and motivation.
-- If it's a Buyer, focus on budget, requirements, and urgency.
+- Ensure that different participants are NOT assigned the same name unless explicitly stated.
+- Translate any multilingual segments (Hindi, Gujarati, Marathi, etc.) to English.
+- Return strictly valid JSON.
 - No markdown.
 `
     }
@@ -147,15 +167,23 @@ Rules:
 
 const getMockData = () => {
   return {
-    conversationType: "Buyer",
-    summary: "Client interested in 3BHK in Shela.",
-    brokerTakeaway: "Emotionally attached to Vastu, needs 80% loan.",
-    mainKeyPoints: [{ point: "Needs 80% funding", party: "Buyer", category: "Financial" }],
-    clientProfile: { budgetRange: "₹80L–₹95L", loanRequirement: "Required", urgency: "Immediate" },
-    dealProbabilityScore: 65,
-    suggestedAction: "Share Vastu units list.",
-    speakers: [{ id: "Speaker 0", role: "Broker", name: "Not mentioned" }],
-    metadata: { propertyType: "3BHK" },
-    client_name: "Not mentioned"
+    detectedContext: {
+      industry: ["Healthcare", "Wellness"],
+      nature: ["Consultation", "Lifestyle"]
+    },
+    conversationType: "Patient Consultation",
+    summary: "Patient Rajesh consulting for knee pain and lifestyle changes.",
+    keyTakeaway: "Knee inflammation remains; physiotherapy and weight management recommended.",
+    mainKeyPoints: [{ point: "Needs MRI if pain continues for 10 days", party: "Doctor", category: "Medical" }],
+    participantProfiles: [
+      { name: "Rajesh", role: "Patient", attributes: { urgency_or_priority: "High", key_concern: "Surgery fear" } }
+    ],
+    actionItems: [
+      { date: "14-Mar-2026 (Saturday)", task: "Physiotherapy session", performedBy: "Patient" }
+    ],
+    priorityScore: 75,
+    suggestedAction: "Schedule follow-up for 14-Mar-2026",
+    metadata: { propertyType: "N/A" },
+    client_name: "Rajesh"
   };
 };

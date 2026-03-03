@@ -1,9 +1,11 @@
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+
 import app from '../app';
-import User from '../models/User';
 import Meeting from '../models/Meeting';
+import { initializeDatabase } from '../utils/initDb';
+import { MeetingStatus } from '../types/enums';
 
 let mongoServer: MongoMemoryServer;
 
@@ -11,6 +13,7 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
+  await initializeDatabase();
 });
 
 afterAll(async () => {
@@ -48,40 +51,51 @@ describe('CRM Search & Filtering API', () => {
     token = loginRes.body.data?.token || "";
     userId = loginRes.body.data?.user.id || "";
 
+    // Create project
+    const projectRes = await request(app)
+      .post('/api/projects')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'CRM Test Project' });
+    const projectId = projectRes.body.data?._id || "";
+
 
     // 2. Seed Mock Meetings
     await Meeting.create([
       {
         brokerId: userId,
+        projectId,
         title: 'Meeting with Mr. Patel',
         clientName: 'Mister Patel',
         conversationType: 'Seller',
-        dealProbabilityScore: 90,
-        status: 'completed',
+        priorityScore: 90,
+        status: MeetingStatus.COMPLETED,
         transcript: 'I want to sell my property in Satellite area.'
       },
       {
         brokerId: userId,
+        projectId,
         title: 'High interest 3BHK',
         clientName: 'Nirav',
         conversationType: 'Buyer',
-        dealProbabilityScore: 85,
-        status: 'completed',
+        priorityScore: 85,
+        status: MeetingStatus.COMPLETED,
         transcript: 'Looking for a flat in Shela.'
       },
       {
         brokerId: userId,
+        projectId,
         title: 'Initial Inquiry',
         clientName: 'Anjali',
         conversationType: 'Buyer',
-        dealProbabilityScore: 40,
-        status: 'completed',
+        priorityScore: 40,
+        status: MeetingStatus.COMPLETED,
         transcript: 'Just asking about prices.'
       },
       {
         brokerId: userId,
+        projectId,
         title: 'Failed Recording',
-        status: 'failed',
+        status: MeetingStatus.FAILED,
       }
     ]);
   });
@@ -92,8 +106,8 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
-    expect(res.body.data[0].clientName).toBe('Mister Patel');
+    expect(res.body.pagination.totalCount).toBe(1);
+    expect(res.body.data[0].client_name).toBe('Mister Patel');
   });
 
   it('should search by transcript content', async () => {
@@ -102,7 +116,7 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
+    expect(res.body.pagination.totalCount).toBe(1);
     expect(res.body.data[0].title).toBe('High interest 3BHK');
   });
 
@@ -112,28 +126,28 @@ describe('CRM Search & Filtering API', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(2);
-    expect(res.body.data.every((m: any) => m.conversationType === 'Buyer')).toBe(true);
+    expect(res.body.pagination.totalCount).toBe(2);
+    expect(res.body.data.every((m: any) => m.ai_response.conversationType === 'Buyer')).toBe(true);
   });
 
   it('should filter by status', async () => {
     const res = await request(app)
-      .get('/api/meetings?status=failed')
+      .get(`/api/meetings?status=${MeetingStatus.FAILED}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
-    expect(res.body.data[0].status).toBe('failed');
+    expect(res.body.pagination.totalCount).toBe(1);
+    expect(res.body.data[0].status).toBe(MeetingStatus.FAILED);
   });
 
-  it('should sort by deal probability (desc)', async () => {
+  it('should sort by priority score (desc)', async () => {
     const res = await request(app)
-      .get('/api/meetings?sortBy=dealProbabilityScore&order=desc')
+      .get('/api/meetings?sortBy=priorityScore&order=desc')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data[0].dealProbabilityScore).toBe(90);
-    expect(res.body.data[1].dealProbabilityScore).toBe(85);
+    expect(res.body.data[0].ai_response.priorityScore).toBe(90);
+    expect(res.body.data[1].ai_response.priorityScore).toBe(85);
   });
 
   it('should calculate CRM stats correctly', async () => {
@@ -146,7 +160,7 @@ describe('CRM Search & Filtering API', () => {
     expect(res.body.data.totalDeals).toBe(3); // 3 completed ones
     expect(res.body.data.buyers).toBe(2);
     expect(res.body.data.sellers).toBe(1);
-    expect(res.body.data.highProbabilityDeals).toBe(2); // 90 and 85
-    expect(res.body.data.avgProbability).toBeCloseTo((90 + 85 + 40) / 3);
+    expect(res.body.data.highPriorityMeetings).toBe(2); // 90 and 85
+    expect(res.body.data.avgPriority).toBeCloseTo((90 + 85 + 40) / 3);
   });
 });

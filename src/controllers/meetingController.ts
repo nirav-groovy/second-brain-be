@@ -1,19 +1,53 @@
-import { Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import mongoose from 'mongoose';
+import { Response } from 'express';
+
 import User from '@/models/User';
 import Meeting from '@/models/Meeting';
+import Project from '@/models/Project';
 import { transcribeAudio } from '@/services/sttService';
-import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
+import { UserStatus, MeetingStatus } from '@/types/enums';
+import { getPaginationMetadata } from '@/utils/pagination';
 import { scheduleFollowUp } from '@/services/calendarService';
+import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
 
 export const createMeeting = async (req: any, res: Response) => {
   try {
-    const { title } = req.body;
+    const { title, projectId } = req.body;
     const audioUrl = req.file ? req.file.path : null;
+    console.log(`[Meeting] Creating new meeting: "${title}" for project: ${projectId}`);
+
+    let effectiveProjectId = projectId;
+
+    if (projectId) {
+      // Verify project exists and belongs to user
+      const project = await Project.findOne({ _id: projectId, ownerId: req.user.id });
+      if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+    } else {
+      // Create or find an "Unnamed Project"
+      let unnamedProject = await Project.findOne({ name: 'Unnamed Project', ownerId: req.user.id });
+      if (!unnamedProject) {
+        unnamedProject = new Project({
+          name: 'Unnamed Project',
+          description: 'Default project for meetings without a specified project.',
+          ownerId: req.user.id
+        });
+        await unnamedProject.save();
+      }
+      effectiveProjectId = unnamedProject._id;
+    }
 
     // Check Verification Status and Limits
     const user: any = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (user.status !== UserStatus.ACTIVE) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your profile is incomplete. Please complete your profile by selecting a category before creating meetings.'
+      });
+    }
 
     const isVerified = user?.emailVerified || user?.phoneVerified || false;
     if (!isVerified) {
@@ -29,9 +63,10 @@ export const createMeeting = async (req: any, res: Response) => {
     // Create meeting entry with initial status
     const newMeeting = new Meeting({
       brokerId: req.user.id,
+      projectId: effectiveProjectId,
       title,
       audioUrl: audioUrl,
-      status: 'transcribe-generating'
+      status: MeetingStatus.TRANSCRIBE_GENERATING
     });
     const savedMeeting = await newMeeting.save();
 
@@ -41,16 +76,23 @@ export const createMeeting = async (req: any, res: Response) => {
     // Background Processing
     (async () => {
       try {
+        console.log(`[Meeting ${savedMeeting._id}] Starting background processing...`);
+
         // 1. Convert Speech to Text (STT)
+        console.log(`[Meeting ${savedMeeting._id}] Step 1: Transcribing audio from ${audioUrl}`);
         const sttResult = await transcribeAudio(audioUrl);
         let mappedTranscript = sttResult?.diarized_transcript?.entries || [];
+        console.log(`[Meeting ${savedMeeting._id}] STT Result entries count: ${mappedTranscript.length}`);
 
-        savedMeeting.status = 'speakers-generating';
+        savedMeeting.originalTranscript = JSON.stringify(mappedTranscript);
+        savedMeeting.status = MeetingStatus.SPEAKERS_GENERATING;
         await savedMeeting.save();
 
         // 2. Map Speaker Names if available from the transcript
         if (sttResult?.diarized_transcript && sttResult?.diarized_transcript.entries) {
+          console.log(`[Meeting ${savedMeeting._id}] Step 2: Identifying speakers and roles...`);
           const updatedTranscript = await identifySpeakers(JSON.stringify(sttResult?.diarized_transcript.entries));
+          console.log(`[Meeting ${savedMeeting._id}] Speaker Identification finished.`);
           if (typeof updatedTranscript === 'string') {
             mappedTranscript = updatedTranscript as any;
           } else if (updatedTranscript && Array.isArray(updatedTranscript)) {
@@ -58,10 +100,11 @@ export const createMeeting = async (req: any, res: Response) => {
           }
         }
 
-        savedMeeting.status = 'intelligence-generating';
+        savedMeeting.status = MeetingStatus.INTELLIGENCE_GENERATING;
         await savedMeeting.save();
 
         // 3. Extract AI Understanding (Deal Intelligence)
+        console.log(`[Meeting ${savedMeeting._id}] Step 3: Extracting AI Intelligence...`);
         const finalTranscriptText = typeof mappedTranscript === 'string' ? mappedTranscript : JSON.stringify(mappedTranscript);
         const result = await extractDealIntelligence(finalTranscriptText);
 
@@ -70,13 +113,22 @@ export const createMeeting = async (req: any, res: Response) => {
         }
 
         const { ai_response, long_transcript } = result;
+        console.log(`[Meeting ${savedMeeting._id}] AI Intelligence extracted successfully.`);
 
-        // Update CRM Metadata
+        // Direct Storage Mapping
+        savedMeeting.detectedContext = ai_response.detectedContext;
         savedMeeting.conversationType = ai_response.conversationType || 'General';
-        savedMeeting.dealProbabilityScore = ai_response.dealProbabilityScore || 0;
+        savedMeeting.priorityScore = ai_response.priorityScore || 0;
+        savedMeeting.summary = ai_response.summary;
+        savedMeeting.keyTakeaway = ai_response.keyTakeaway;
+        savedMeeting.mainKeyPoints = ai_response.mainKeyPoints || [];
+        savedMeeting.participantProfiles = ai_response.participantProfiles || [];
+        savedMeeting.actionItems = ai_response.actionItems || [];
+        savedMeeting.suggestedAction = ai_response.suggestedAction;
+        savedMeeting.metadata = ai_response.metadata;
 
-        // Map Client Info from speakers or specific client_name field
-        const client = ai_response.speakers?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
+        // Map Client Info
+        const client = ai_response.participantProfiles?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
         if (ai_response.client_name && ai_response.client_name !== 'Not mentioned') {
           savedMeeting.clientName = ai_response.client_name;
         } else if (client) {
@@ -84,22 +136,25 @@ export const createMeeting = async (req: any, res: Response) => {
         }
 
         savedMeeting.transcript = finalTranscriptText;
-        savedMeeting.ai_response = ai_response;
         savedMeeting.long_transcript = long_transcript;
-        savedMeeting.status = 'completed';
+        savedMeeting.status = MeetingStatus.COMPLETED;
         await savedMeeting.save();
 
-        // 4. Automatically Schedule Follow-up in Calendar if date is present
+        // 4. Automatically Schedule Follow-up in Calendar
+        console.log(`[Meeting ${savedMeeting._id}] Step 4: Checking for follow-up scheduling...`);
         await scheduleFollowUp(req.user.id, (savedMeeting._id as string), ai_response);
+
+        console.log(`[Meeting ${savedMeeting._id}] Background processing COMPLETED.`);
       } catch (bgError: any) {
-        console.error('Background processing failed for meeting:', savedMeeting._id, bgError);
-        savedMeeting.status = 'failed';
+        console.error(`[Meeting ${savedMeeting._id}] Background processing FAILED:`, bgError);
+        savedMeeting.status = MeetingStatus.FAILED;
         await savedMeeting.save();
       }
     })();
 
     return;
   } catch (error: any) {
+    console.error(`[Meeting] createMeeting error:`, error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -110,11 +165,22 @@ export const getMeetings = async (req: any, res: Response) => {
       search,
       status,
       type,
+      projectId,
       sortBy = 'createdAt',
-      order = 'desc'
+      order = 'desc',
+      page = 1,
+      limit = 10
     } = req.query;
 
+    const currentPage = Number(page);
+    const pageSize = Number(limit);
+    const skip = (currentPage - 1) * pageSize;
+
     const query: any = { brokerId: req.user.id };
+
+    if (projectId) {
+      query.projectId = projectId;
+    }
 
     // Text Search
     if (search) {
@@ -138,12 +204,50 @@ export const getMeetings = async (req: any, res: Response) => {
     const sortOptions: any = {};
     sortOptions[sortBy as string] = order === 'desc' ? -1 : 1;
 
-    const meetings = await Meeting.find(query).sort(sortOptions);
+    // Get total count for pagination
+    const totalCount = await Meeting.countDocuments(query);
+
+    // Fetch paginated data
+    const meetings = await Meeting.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(pageSize);
+
+    const response: any = [];
+    for (const meeting of meetings) {
+      response.push({
+        id: meeting._id,
+        title: meeting.title,
+        status: meeting.status,
+        audioUrl: meeting.audioUrl,
+        createdAt: meeting.createdAt,
+        project_name: meeting.projectId,
+        client_name: meeting.clientName,
+        long_transcript: meeting.long_transcript,
+        ai_response: {
+          summary: meeting.summary,
+          metadata: meeting.metadata,
+          transcript: meeting.transcript,
+          actionItems: meeting.actionItems,
+          keyTakeaway: meeting.keyTakeaway,
+          mainKeyPoints: meeting.mainKeyPoints,
+          priorityScore: meeting.priorityScore,
+          suggestedAction: meeting.suggestedAction,
+          detectedContext: meeting.detectedContext,
+          conversationType: meeting.conversationType,
+          originalTranscript: meeting.originalTranscript,
+          participantProfiles: meeting.participantProfiles,
+        }
+      });
+    }
+
+    // Get pagination metadata
+    const pagination = await getPaginationMetadata(totalCount, currentPage, pageSize);
 
     return res.json({
       success: true,
-      count: meetings.length,
-      data: meetings
+      data: response,
+      pagination
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
@@ -153,25 +257,25 @@ export const getMeetings = async (req: any, res: Response) => {
 export const getCRMStats = async (req: any, res: Response) => {
   try {
     const stats = await Meeting.aggregate([
-      { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: 'completed' } },
+      { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: MeetingStatus.COMPLETED } },
       {
         $group: {
           _id: null,
           totalDeals: { $sum: 1 },
-          avgProbability: { $avg: '$dealProbabilityScore' },
+          avgPriority: { $avg: '$priorityScore' },
           buyers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Buyer'] }, 1, 0] } },
           sellers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Seller'] }, 1, 0] } },
-          highProbabilityDeals: { $sum: { $cond: [{ $gte: ['$dealProbabilityScore', 80] }, 1, 0] } }
+          highPriorityMeetings: { $sum: { $cond: [{ $gte: ['$priorityScore', 80] }, 1, 0] } }
         }
       }
     ]);
 
     const result = stats.length > 0 ? stats[0] : {
       totalDeals: 0,
-      avgProbability: 0,
+      avgPriority: 0,
       buyers: 0,
       sellers: 0,
-      highProbabilityDeals: 0
+      highPriorityMeetings: 0
     };
 
     return res.json({ success: true, data: result });
@@ -185,8 +289,143 @@ export const getMeetingDetail = async (req: any, res: Response) => {
     const meeting = await Meeting.findOne({ _id: req.params.id, brokerId: req.user.id });
     if (!meeting) return res.status(404).json({ success: false, message: 'Meeting not found' });
 
-    return res.json({ success: true, data: meeting });
+    const response = {
+      id: meeting._id,
+      title: meeting.title,
+      status: meeting.status,
+      audioUrl: meeting.audioUrl,
+      createdAt: meeting.createdAt,
+      project_name: meeting.projectId,
+      client_name: meeting.clientName,
+      long_transcript: meeting.long_transcript,
+      ai_response: {
+        summary: meeting.summary,
+        metadata: meeting.metadata,
+        transcript: meeting.transcript,
+        actionItems: meeting.actionItems,
+        keyTakeaway: meeting.keyTakeaway,
+        mainKeyPoints: meeting.mainKeyPoints,
+        priorityScore: meeting.priorityScore,
+        suggestedAction: meeting.suggestedAction,
+        detectedContext: meeting.detectedContext,
+        conversationType: meeting.conversationType,
+        originalTranscript: meeting.originalTranscript,
+        participantProfiles: meeting.participantProfiles,
+      }
+    }
+
+    return res.json({ success: true, data: response });
   } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const regenerateMeetingIntelligence = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Meeting ${id}] Requested regeneration of intelligence...`);
+    const meeting = await Meeting.findOne({ _id: id, brokerId: req.user.id });
+
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    if (!meeting.transcript) {
+      return res.status(400).json({ success: false, message: 'No transcript available for regeneration' });
+    }
+
+    meeting.status = MeetingStatus.INTELLIGENCE_GENERATING;
+    await meeting.save();
+
+    // Respond immediately
+    res.json({ success: true, message: 'Regeneration started', data: meeting });
+
+    // Background Processing
+    (async () => {
+      try {
+        console.log(`[Meeting ${meeting._id}] Starting regeneration background process...`);
+        const finalTranscriptText = typeof meeting.transcript === 'string' ? meeting.transcript : JSON.stringify(meeting.transcript);
+
+        console.log(`[Meeting ${meeting._id}] Extracting AI Intelligence (Regenerate)...`);
+        const result = await extractDealIntelligence(finalTranscriptText);
+
+        if (!result || !result.ai_response) {
+          throw new Error('AI Intelligence extraction failed to return valid response');
+        }
+
+        const { ai_response, long_transcript } = result;
+        console.log(`[Meeting ${meeting._id}] AI Intelligence extracted successfully (Regenerate).`);
+
+        // Direct Storage Mapping
+        meeting.detectedContext = ai_response.detectedContext;
+        meeting.conversationType = ai_response.conversationType || 'General';
+        meeting.priorityScore = ai_response.priorityScore || 0;
+        meeting.summary = ai_response.summary;
+        meeting.keyTakeaway = ai_response.keyTakeaway;
+        meeting.mainKeyPoints = ai_response.mainKeyPoints || [];
+        meeting.participantProfiles = ai_response.participantProfiles || [];
+        meeting.actionItems = ai_response.actionItems || [];
+        meeting.suggestedAction = ai_response.suggestedAction;
+        meeting.metadata = ai_response.metadata;
+
+        // Map Client Info
+        const client = ai_response.participantProfiles?.find((s: any) => s.role === 'Buyer' || s.role === 'Seller');
+        if (ai_response.client_name && ai_response.client_name !== 'Not mentioned') {
+          meeting.clientName = ai_response.client_name;
+        } else if (client) {
+          meeting.clientName = client.name !== 'Not mentioned' ? client.name : undefined;
+        }
+
+        meeting.long_transcript = long_transcript;
+        meeting.status = MeetingStatus.COMPLETED;
+        await meeting.save();
+
+        // Re-schedule follow-up if needed
+        console.log(`[Meeting ${meeting._id}] Checking follow-up (Regenerate)...`);
+        await scheduleFollowUp(req.user.id, (meeting._id as string), ai_response);
+
+        console.log(`[Meeting ${meeting._id}] Regeneration background process COMPLETED.`);
+      } catch (bgError: any) {
+        console.error(`[Meeting ${meeting._id}] Regeneration background process FAILED:`, bgError);
+        meeting.status = MeetingStatus.FAILED;
+        await meeting.save();
+      }
+    })();
+
+    return;
+  } catch (error: any) {
+    console.error(`[Meeting] Regeneration error:`, error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const deleteMeeting = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Meeting] Requested deletion for meeting: ${id}`);
+
+    const meeting = await Meeting.findOne({ _id: id, brokerId: req.user.id });
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    // Remove files if they exist
+    if (meeting.audioUrl && typeof meeting.audioUrl === 'string') {
+      const audioUrl = meeting.audioUrl as string;
+      const filePath = path.isAbsolute(audioUrl) ? audioUrl : path.join(process.cwd(), audioUrl);
+      if (fs.existsSync(filePath)) {
+        console.log(`[Meeting] Deleting file: ${filePath}`);
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // Delete from database
+    await Meeting.deleteOne({ _id: id });
+    console.log(`[Meeting] Deleted meeting ${id} from database.`);
+
+    return res.json({ success: true, message: 'Meeting and associated files deleted successfully' });
+  } catch (error: any) {
+    console.error(`[Meeting] Delete error:`, error);
     return res.status(500).json({ success: false, error: error.message });
   }
 };

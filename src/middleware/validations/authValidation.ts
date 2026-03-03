@@ -7,8 +7,6 @@ export const registerValidation = [
   body('email').isEmail().normalizeEmail().withMessage('Must be a valid email'),
   body('phone').trim().notEmpty().withMessage('Phone number is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-  body('companyName').optional().trim(),
-  body('licenseNumber').optional().trim(),
   validateResult,
 ];
 

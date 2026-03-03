@@ -2,7 +2,9 @@ import app from '../app';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import User from '../models/User';
+import { UserStatus } from '../types/enums';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { initializeDatabase } from '../utils/initDb';
 
 let mongoServer: MongoMemoryServer;
 
@@ -19,6 +21,7 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
+  await initializeDatabase();
 });
 
 afterAll(async () => {
@@ -32,15 +35,18 @@ describe('Authentication API - Comprehensive Security & Validation', () => {
     lastName: 'Doe',
     email: 'john.doe@example.com',
     phone: '9876543210',
-    password: 'securePassword123',
+    password: 'securePassword123'
   };
 
   describe('POST /api/auth/register', () => {
-    it('should successfully register a new broker', async () => {
+    it('should successfully register a new user (status: active)', async () => {
       const res = await request(app).post('/api/auth/register').send(testUser);
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.message).toContain('User registered successfully');
+
+      const user = await User.findOne({ email: testUser.email });
+      expect(user?.status).toBe(UserStatus.ACTIVE);
     });
 
     it('should fail if email is already taken', async () => {

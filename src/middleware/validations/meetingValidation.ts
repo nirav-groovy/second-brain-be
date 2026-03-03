@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export const createMeetingValidation = [
   body('title').notEmpty().withMessage('Title is required'),
+  body('projectId').optional().isMongoId().withMessage('Invalid projectId format'),
   // Custom check for req.file
   (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) {

@@ -1,15 +1,15 @@
 import express from 'express';
-import { 
-  register, 
-  login, 
-  verifyEmail, 
-  verifyPhone, 
-  requestOTP 
+import {
+  register,
+  login,
+  verifyEmail,
+  verifyPhone,
+  requestOTP
 } from '@/controllers/authController';
 import { authenticate } from '@/middleware/authMiddleware';
-import { 
-  registerValidation, 
-  loginValidation, 
+import {
+  registerValidation,
+  loginValidation,
   otpValidation,
   requestOTPValidation
 } from '@/middleware/validations/authValidation';
@@ -20,7 +20,7 @@ const router = express.Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new broker
+ *     summary: Register a new user
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -45,10 +45,6 @@ const router = express.Router();
  *                 type: string
  *               password:
  *                 type: string
- *               companyName:
- *                 type: string
- *               licenseNumber:
- *                 type: string
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -61,7 +57,7 @@ router.post('/register', registerValidation, register);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Authenticate a broker
+ *     summary: Authenticate a user
  *     tags: [Auth]
  *     requestBody:
  *       required: true

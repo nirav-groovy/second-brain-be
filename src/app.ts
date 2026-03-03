@@ -6,6 +6,7 @@ import { specs } from '@/config/swagger';
 import swaggerUi from 'swagger-ui-express';
 import authRoutes from '@/routes/authRoutes';
 import meetingRoutes from '@/routes/meetingRoutes';
+import projectRoutes from '@/routes/projectRoutes';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
