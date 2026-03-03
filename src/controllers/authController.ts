@@ -1,9 +1,10 @@
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 import User from '@/models/User';
+import { logError } from '@/utils/logger';
 import { UserStatus } from '@/types/enums';
 import { sendSMSOTP } from '@/services/smsService';
 import { sendEmailOTP } from '@/services/emailService';
@@ -16,7 +17,8 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'register';
   try {
     const { firstName, lastName, email, phone, password } = req.body;
 
@@ -44,11 +46,13 @@ export const register = async (req: Request, res: Response) => {
       message: 'User registered successfully.'
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    await logError(error, { source: 'API', functionName: FUNCTION_NAME, requestBody: req.body });
+    return next(error);
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'login';
   try {
     const { email, password } = req.body;
     const user: any = await User.findOne({ email });
@@ -75,11 +79,13 @@ export const login = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    await logError(error, { source: 'API', functionName: FUNCTION_NAME, requestBody: req.body });
+    return next(error);
   }
 };
 
-export const requestOTP = async (req: any, res: Response) => {
+export const requestOTP = async (req: any, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'requestOTP';
   try {
     const { type } = req.body; // 'email' or 'phone'
     const user: any = await User.findById(req.user.id);
@@ -106,11 +112,13 @@ export const requestOTP = async (req: any, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid type. Use "email" or "phone".' });
     }
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    await logError(error, { source: 'API', functionName: FUNCTION_NAME, userId: req.user?.id, requestBody: req.body });
+    return next(error);
   }
 };
 
-export const verifyEmail = async (req: any, res: Response) => {
+export const verifyEmail = async (req: any, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'verifyEmail';
   try {
     const { otp } = req.body;
     const user: any = await User.findById(req.user.id);
@@ -129,11 +137,13 @@ export const verifyEmail = async (req: any, res: Response) => {
 
     return res.json({ success: true, message: 'Email verified successfully' });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    await logError(error, { source: 'API', functionName: FUNCTION_NAME, userId: req.user?.id, requestBody: req.body });
+    return next(error);
   }
 };
 
-export const verifyPhone = async (req: any, res: Response) => {
+export const verifyPhone = async (req: any, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'verifyPhone';
   try {
     const { otp } = req.body;
     const user: any = await User.findById(req.user.id);
@@ -152,6 +162,7 @@ export const verifyPhone = async (req: any, res: Response) => {
 
     return res.json({ success: true, message: 'Phone verified successfully' });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    await logError(error, { source: 'API', functionName: FUNCTION_NAME, userId: req.user?.id, requestBody: req.body });
+    return next(error);
   }
 };

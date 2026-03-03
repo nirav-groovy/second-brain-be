@@ -1,9 +1,10 @@
+import { logError } from '@/utils/logger';
 import CalendarEvent from '@/models/CalendarEvent';
 
 export const scheduleFollowUp = async (brokerId: string, meetingId: string, aiResponse: any) => {
   try {
     const actionItems = aiResponse.actionItems || [];
-    
+
     if (actionItems.length === 0) {
       console.log('No action items found to schedule.');
       return [];
@@ -50,7 +51,12 @@ Meeting Summary: ${aiResponse.summary?.slice(0, 200) || 'N/A'}`;
 
     return createdEvents;
   } catch (error) {
-    console.error('Error scheduling follow-ups:', error);
+    // Log to error database
+    await logError(error, {
+      userId: brokerId,
+      source: 'BACKGROUND_TASK',
+      context: { meetingId, step: 'Calendar Scheduling' }
+    });
     return null;
   }
 };

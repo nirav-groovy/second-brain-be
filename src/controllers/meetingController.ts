@@ -1,18 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 
 import User from '@/models/User';
 import Meeting from '@/models/Meeting';
 import Project from '@/models/Project';
+import { logError } from '@/utils/logger';
 import { transcribeAudio } from '@/services/sttService';
 import { UserStatus, MeetingStatus } from '@/types/enums';
 import { getPaginationMetadata } from '@/utils/pagination';
 import { scheduleFollowUp } from '@/services/calendarService';
 import { extractDealIntelligence, identifySpeakers } from '@/services/dealIntelligenceService';
 
-export const createMeeting = async (req: any, res: Response) => {
+export const createMeeting = async (req: any, res: Response, next: NextFunction) => {
+  const FUNCTION_NAME = 'createMeeting';
   try {
     const { title, projectId } = req.body;
     const audioUrl = req.file ? req.file.path : null;
@@ -148,6 +150,15 @@ export const createMeeting = async (req: any, res: Response) => {
         console.log(`[Meeting ${savedMeeting._id}] Background processing COMPLETED.`);
       } catch (bgError: any) {
         console.error(`[Meeting ${savedMeeting._id}] Background processing FAILED:`, bgError);
+
+        // Log background error to database
+        await logError(bgError, {
+          userId: req.user.id,
+          source: 'BACKGROUND_TASK',
+          functionName: 'createMeeting_background',
+          context: { meetingId: savedMeeting._id, step: 'Background Processing' }
+        });
+
         savedMeeting.status = MeetingStatus.FAILED;
         await savedMeeting.save();
       }
@@ -155,12 +166,12 @@ export const createMeeting = async (req: any, res: Response) => {
 
     return;
   } catch (error: any) {
-    console.error(`[Meeting] createMeeting error:`, error);
-    return res.status(500).json({ success: false, error: error.message });
+    console.error(`[Meeting] ${FUNCTION_NAME} error:`, error);
+    return next(error);
   }
 };
 
-export const getMeetings = async (req: any, res: Response) => {
+export const getMeetings = async (req: any, res: Response, next: NextFunction) => {
   try {
     const {
       search,
@@ -252,11 +263,11 @@ export const getMeetings = async (req: any, res: Response) => {
       pagination
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return next(error);
   }
 };
 
-export const getCRMStats = async (req: any, res: Response) => {
+export const getCRMStats = async (req: any, res: Response, next: NextFunction) => {
   try {
     const stats = await Meeting.aggregate([
       { $match: { brokerId: new mongoose.Types.ObjectId(req.user.id), status: MeetingStatus.COMPLETED } },
@@ -305,11 +316,11 @@ export const getCRMStats = async (req: any, res: Response) => {
       }
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return next(error);
   }
 };
 
-export const getMeetingDetail = async (req: any, res: Response) => {
+export const getMeetingDetail = async (req: any, res: Response, next: NextFunction) => {
   try {
     const meeting = await Meeting.findOne({ _id: req.params.id, brokerId: req.user.id });
     if (!meeting) return res.status(404).json({ success: false, message: 'Meeting not found' });
@@ -342,11 +353,11 @@ export const getMeetingDetail = async (req: any, res: Response) => {
 
     return res.json({ success: true, data: response });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return next(error);
   }
 };
 
-export const regenerateMeetingIntelligence = async (req: any, res: Response) => {
+export const regenerateMeetingIntelligence = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     console.log(`[Meeting ${id}] Requested regeneration of intelligence...`);
@@ -413,6 +424,15 @@ export const regenerateMeetingIntelligence = async (req: any, res: Response) => 
         console.log(`[Meeting ${meeting._id}] Regeneration background process COMPLETED.`);
       } catch (bgError: any) {
         console.error(`[Meeting ${meeting._id}] Regeneration background process FAILED:`, bgError);
+
+        // Log background error to database
+        await logError(bgError, {
+          userId: req.user.id,
+          source: 'BACKGROUND_TASK',
+          functionName: 'regenerateMeetingIntelligence_background',
+          context: { meetingId: meeting._id, step: 'Regeneration' }
+        });
+
         meeting.status = MeetingStatus.FAILED;
         await meeting.save();
       }
@@ -421,11 +441,11 @@ export const regenerateMeetingIntelligence = async (req: any, res: Response) => 
     return;
   } catch (error: any) {
     console.error(`[Meeting] Regeneration error:`, error);
-    return res.status(500).json({ success: false, error: error.message });
+    return next(error);
   }
 };
 
-export const deleteMeeting = async (req: any, res: Response) => {
+export const deleteMeeting = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     console.log(`[Meeting] Requested deletion for meeting: ${id}`);
@@ -452,6 +472,6 @@ export const deleteMeeting = async (req: any, res: Response) => {
     return res.json({ success: true, message: 'Meeting and associated files deleted successfully' });
   } catch (error: any) {
     console.error(`[Meeting] Delete error:`, error);
-    return res.status(500).json({ success: false, error: error.message });
+    return next(error);
   }
 };

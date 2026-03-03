@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import { logError } from "@/utils/logger";
 import { ChatCompletionMessageParam } from "openai/resources/index";
 
 dotenv.config();
@@ -46,7 +47,11 @@ export const extractDealIntelligence = async (transcript: string) => {
 
     return { ai_response: JSON.parse(cleanJson), long_transcript: is_max_char };
   } catch (error: any) {
-    console.error("Azure OpenAI extraction failed:", error.message);
+    // Log to error database
+    await logError(error, {
+      source: 'BACKGROUND_TASK',
+      context: { transcriptSnippet: transcript.slice(0, 200), service: 'AzureOpenAI_Intelligence' }
+    });
     return { ai_response: getMockData(), long_transcript: false };
   }
 };
@@ -90,8 +95,12 @@ export const identifySpeakers = async (transcript: string) => {
     const text = response?.choices?.[0]?.message?.content || "";
     console.log(`[AI] Raw speaker identification response: ${text.slice(0, 500)}...`);
     return text.trim();
-  } catch (error) {
-    console.error("Speaker identification failed:", error);
+  } catch (error: any) {
+    // Log to error database
+    await logError(error, {
+      source: 'BACKGROUND_TASK',
+      context: { transcriptSnippet: transcript.slice(0, 200), service: 'AzureOpenAI_Speakers' }
+    });
     return null;
   }
 };
@@ -139,7 +148,7 @@ Return JSON structure:
   ],
   "participantProfiles": [
     {
-      "id": "Speaker ID from transcript",
+      "speakerId": "Speaker ID from transcript",
       "name": "Name of person",
       "role": "Detected Role",
       "attributes": { "budget_or_salary": "If applicable", "urgency_or_priority": "High | Medium | Low", "key_concern": "Main blocker or interest" }
@@ -176,7 +185,7 @@ const getMockData = () => {
     keyTakeaway: "Knee inflammation remains; physiotherapy and weight management recommended.",
     mainKeyPoints: [{ point: "Needs MRI if pain continues for 10 days", party: "Doctor", category: "Medical" }],
     participantProfiles: [
-      { name: "Rajesh", role: "Patient", attributes: { urgency_or_priority: "High", key_concern: "Surgery fear" } }
+      { speakerId: "1", name: "Rajesh", role: "Patient", attributes: { urgency_or_priority: "High", key_concern: "Surgery fear" } }
     ],
     actionItems: [
       { date: "14-Mar-2026 (Saturday)", task: "Physiotherapy session", performedBy: "Patient" }

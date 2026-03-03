@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import authRoutes from '@/routes/authRoutes';
 import meetingRoutes from '@/routes/meetingRoutes';
 import projectRoutes from '@/routes/projectRoutes';
+import { globalErrorHandler } from '@/middleware/errorMiddleware';
 
 dotenv.config();
 
@@ -24,7 +25,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/projects', projectRoutes);
 
-// Global Error Handler
+// Basic Route
+app.get('/', (req, res) => {
+  res.send('AI Meeting Memory API is running');
+});
+
+// Multer and custom errors handling before global handler if needed
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -41,13 +47,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
   }
 
-  console.error(err.stack);
-  return res.status(500).json({ error: 'Internal Server Error' });
+  return next(err);
 });
 
-// Basic Route
-app.get('/', (req, res) => {
-  res.send('AI Meeting Memory API is running');
-});
+// Global Error Handler (Centralized Logging)
+app.use(globalErrorHandler);
 
 export default app;

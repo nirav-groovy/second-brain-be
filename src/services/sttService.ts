@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { SarvamAIClient } from "sarvamai";
+import { logError } from '@/utils/logger';
 import { createClient } from '@deepgram/sdk';
 
 dotenv.config();
@@ -15,8 +16,17 @@ const deepgram = DEEPGRAM_API_KEY ? createClient(DEEPGRAM_API_KEY) : null;
 export const transcribeAudio = async (audioUrl: string | null, projectId: string = 'unnamed') => {
   if (!audioUrl) throw new Error('Audio file path is required for STT');
 
-  // We are now prioritizing Sarvam AI for Indian language support and diarization.
-  return await transcribeAudioSarvam(audioUrl, projectId);
+  try {
+    // We are now prioritizing Sarvam AI for Indian language support and diarization.
+    return await transcribeAudioSarvam(audioUrl, projectId);
+  } catch (error) {
+    // Log to error database before throwing further
+    await logError(error, {
+      source: 'BACKGROUND_TASK',
+      context: { audioUrl, projectId, service: 'STT_MASTER' }
+    });
+    throw error;
+  }
 };
 
 // Keeping Deepgram as a fallback or secondary option
@@ -88,7 +98,11 @@ const transcribeAudioDeepgram = async (audioUrl: string) => {
       }))
     };
   } catch (err: any) {
-    console.error('Deepgram Error:', err);
+    // Log internal deepgram error
+    await logError(err, {
+      source: 'BACKGROUND_TASK',
+      context: { audioUrl, service: 'Deepgram' }
+    });
     throw new Error('Speech-to-text conversion failed via Deepgram: ' + err.message);
   }
 };
@@ -151,7 +165,11 @@ const transcribeAudioSarvam = async (audioUrl: string, projectId: string) => {
       speakers: []
     };
   } catch (err: any) {
-    console.error('Sarvam Error:', err);
+    // Log Sarvam error
+    await logError(err, {
+      source: 'BACKGROUND_TASK',
+      context: { audioUrl, projectId, service: 'Sarvam' }
+    });
     // Fallback if Sarvam fails
     return await transcribeAudioDeepgram(audioUrl);
   }
