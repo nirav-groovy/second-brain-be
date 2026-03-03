@@ -79,5 +79,5 @@ jobs:
             npm install
             rm -rf dist/
             npm run build
-            # Restart by name 'api' (preferred) or by ID '18'
-            pm2 restart api || pm2 restart 18 || pm2 start dist/server.js --name api
+            # Restart by name 'second-brain-be' or by ID '18'
+            pm2 restart second-brain-be || pm2 restart 18 || pm2 start dist/server.js --name second-brain-be

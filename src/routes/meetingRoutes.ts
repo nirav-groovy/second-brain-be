@@ -54,7 +54,7 @@ router.post('/', authenticate, upload.single('recording'), createMeetingValidati
  * /api/meetings:
  *   get:
  *     summary: Search and Filter Meetings (CRM View)
- *     tags: [Meetings, CRM]
+ *     tags: [CRM]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -113,7 +113,7 @@ router.get('/stats', authenticate, getCRMStats);
  * /api/meetings/get/{id}:
  *   get:
  *     summary: Get full deal intelligence sheet
- *     tags: [Meetings]
+ *     tags: [CRM]
  *     security:
  *       - bearerAuth: []
  *     parameters:
