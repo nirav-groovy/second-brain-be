@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 import { SarvamAIClient } from "sarvamai";
 import { createClient } from '@deepgram/sdk';
@@ -11,11 +12,11 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || '';
 // Initialize Deepgram only if API key is present to prevent crashes in CI/Tests
 const deepgram = DEEPGRAM_API_KEY ? createClient(DEEPGRAM_API_KEY) : null;
 
-export const transcribeAudio = async (audioUrl: string | null) => {
+export const transcribeAudio = async (audioUrl: string | null, projectId: string = 'unnamed') => {
   if (!audioUrl) throw new Error('Audio file path is required for STT');
 
   // We are now prioritizing Sarvam AI for Indian language support and diarization.
-  return await transcribeAudioSarvam(audioUrl);
+  return await transcribeAudioSarvam(audioUrl, projectId);
 };
 
 // Keeping Deepgram as a fallback or secondary option
@@ -79,6 +80,7 @@ const transcribeAudioDeepgram = async (audioUrl: string) => {
     }
 
     return {
+      sttService: 'Deepgram',
       transcript: diarizedTranscript.trim(),
       speakers: Array.from(uniqueSpeakers).map(s => ({
         id: s.startsWith('Speaker ') ? s.split(' ')[1] : s,
@@ -91,7 +93,7 @@ const transcribeAudioDeepgram = async (audioUrl: string) => {
   }
 };
 
-const transcribeAudioSarvam = async (audioUrl: string) => {
+const transcribeAudioSarvam = async (audioUrl: string, projectId: string) => {
   if (!SARVAM_API_KEY) {
     console.warn("Sarvam API key missing, attempting Deepgram fallback");
     return await transcribeAudioDeepgram(audioUrl);
@@ -124,18 +126,27 @@ const transcribeAudioSarvam = async (audioUrl: string) => {
 
     // Download outputs for successful files
     if (fileResults.successful.length > 0) {
-      await job.downloadOutputs("./output");
+      // Create project-specific output directory
+      const outputDir = path.join(process.cwd(), 'uploads', 'outputs', projectId);
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
 
-      const path = require('path');
+      await job.downloadOutputs(outputDir);
+
       const originalFileName = path.basename(audioUrl);
-      const outputFilePath = path.join(process.cwd(), 'output', `${originalFileName}.json`);
+      const outputFilePath = path.join(outputDir, `${originalFileName}.json`);
       if (fs.existsSync(outputFilePath)) {
         const fileContent = fs.readFileSync(outputFilePath, 'utf8');
-        return JSON.parse(fileContent);
+        return {
+          sttService: 'Sarvam',
+          ...JSON.parse(fileContent)
+        };
       }
     }
 
     return {
+      sttService: 'Sarvam',
       transcript: "",
       speakers: []
     };

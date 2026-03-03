@@ -2,15 +2,29 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-// Ensure uploads directory exists recursively to prevent ENOENT in CI/new environments
-const uploadDir = 'uploads/recordings';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Base upload directory
+const baseDir = 'uploads';
+const recordingsDir = path.join(baseDir, 'recordings');
+
+// Ensure base directories exist
+[baseDir, recordingsDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    // Get projectId from request body if available
+    const projectId = req.body.projectId || 'unnamed';
+    const projectDir = path.join(recordingsDir, projectId);
+
+    // Ensure project-specific directory exists
+    if (!fs.existsSync(projectDir)) {
+      fs.mkdirSync(projectDir, { recursive: true });
+    }
+
+    cb(null, projectDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);

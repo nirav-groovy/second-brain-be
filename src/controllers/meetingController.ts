@@ -80,10 +80,11 @@ export const createMeeting = async (req: any, res: Response) => {
 
         // 1. Convert Speech to Text (STT)
         console.log(`[Meeting ${savedMeeting._id}] Step 1: Transcribing audio from ${audioUrl}`);
-        const sttResult = await transcribeAudio(audioUrl);
+        const sttResult = await transcribeAudio(audioUrl, effectiveProjectId.toString());
         let mappedTranscript = sttResult?.diarized_transcript?.entries || [];
         console.log(`[Meeting ${savedMeeting._id}] STT Result entries count: ${mappedTranscript.length}`);
 
+        savedMeeting.sttService = sttResult.sttService || 'Unknown';
         savedMeeting.originalTranscript = JSON.stringify(mappedTranscript);
         savedMeeting.status = MeetingStatus.SPEAKERS_GENERATING;
         await savedMeeting.save();
@@ -221,6 +222,7 @@ export const getMeetings = async (req: any, res: Response) => {
         status: meeting.status,
         audioUrl: meeting.audioUrl,
         createdAt: meeting.createdAt,
+        sttService: meeting.sttService,
         project_name: meeting.projectId,
         client_name: meeting.clientName,
         long_transcript: meeting.long_transcript,
@@ -261,24 +263,47 @@ export const getCRMStats = async (req: any, res: Response) => {
       {
         $group: {
           _id: null,
-          totalDeals: { $sum: 1 },
+          totalMeetings: { $sum: 1 },
           avgPriority: { $avg: '$priorityScore' },
-          buyers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Buyer'] }, 1, 0] } },
-          sellers: { $sum: { $cond: [{ $eq: ['$conversationType', 'Seller'] }, 1, 0] } },
-          highPriorityMeetings: { $sum: { $cond: [{ $gte: ['$priorityScore', 80] }, 1, 0] } }
+          highPriorityMeetings: { $sum: { $cond: [{ $gte: ['$priorityScore', 80] }, 1, 0] } },
+          // Count by industry (takes first from array)
+          industries: { $push: { $arrayElemAt: ['$detectedContext.industry', 0] } },
+          natures: { $push: { $arrayElemAt: ['$detectedContext.nature', 0] } }
         }
       }
     ]);
 
-    const result = stats.length > 0 ? stats[0] : {
-      totalDeals: 0,
-      avgPriority: 0,
-      buyers: 0,
-      sellers: 0,
-      highPriorityMeetings: 0
-    };
+    if (stats.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          totalMeetings: 0,
+          avgPriority: 0,
+          highPriorityMeetings: 0,
+          industryBreakdown: {},
+          natureBreakdown: {}
+        }
+      });
+    }
 
-    return res.json({ success: true, data: result });
+    const result = stats[0];
+
+    // Helper to count frequencies
+    const getFrequency = (arr: string[]) => arr.reduce((acc: any, val: string) => {
+      if (val) acc[val] = (acc[val] || 0) + 1;
+      return acc;
+    }, {});
+
+    return res.json({
+      success: true,
+      data: {
+        totalMeetings: result.totalMeetings,
+        avgPriority: Math.round(result.avgPriority || 0),
+        highPriorityMeetings: result.highPriorityMeetings,
+        industryBreakdown: getFrequency(result.industries),
+        natureBreakdown: getFrequency(result.natures)
+      }
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
@@ -295,6 +320,7 @@ export const getMeetingDetail = async (req: any, res: Response) => {
       status: meeting.status,
       audioUrl: meeting.audioUrl,
       createdAt: meeting.createdAt,
+      sttService: meeting.sttService,
       project_name: meeting.projectId,
       client_name: meeting.clientName,
       long_transcript: meeting.long_transcript,
