@@ -1,8 +1,19 @@
 import express from 'express';
-import { createMeeting, getMeetings, getMeetingDetail, getCRMStats } from '@/controllers/meetingController';
-import { authenticate } from '@/middleware/authMiddleware';
+
 import { upload } from '@/middleware/uploadMiddleware';
-import { createMeetingValidation, getMeetingDetailValidation } from '@/middleware/validations/meetingValidation';
+import { authenticate } from '@/middleware/authMiddleware';
+import {
+    createMeetingValidation,
+    getMeetingDetailValidation
+} from '@/middleware/validations/meetingValidation';
+import {
+    createMeeting,
+    getMeetings,
+    getMeetingDetail,
+    getCRMStats,
+    regenerateMeetingIntelligence,
+    deleteMeeting
+} from '@/controllers/meetingController';
 
 const router = express.Router();
 
@@ -116,5 +127,45 @@ router.get('/stats', authenticate, getCRMStats);
  *         description: Full meeting detail
  */
 router.get('/get/:id', authenticate, getMeetingDetailValidation, getMeetingDetail);
+
+/**
+ * @swagger
+ * /api/meetings/regenerate/{id}:
+ *   post:
+ *     summary: Regenerate AI intelligence for an existing meeting
+ *     tags: [Meetings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Regeneration process started
+ */
+router.post('/regenerate/:id', authenticate, regenerateMeetingIntelligence);
+
+/**
+ * @swagger
+ * /api/meetings/{id}:
+ *   delete:
+ *     summary: Delete a meeting and its associated recording file
+ *     tags: [Meetings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Meeting deleted successfully
+ */
+router.delete('/:id', authenticate, deleteMeeting);
 
 export default router;

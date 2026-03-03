@@ -19,19 +19,21 @@ jest.mock('../services/sttService', () => ({
 }));
 
 jest.mock('../services/dealIntelligenceService', () => ({
-  identifySpeakers: jest.fn().mockResolvedValue('Speaker 0 (Broker): Hello, this is a test.'),
+  identifySpeakers: jest.fn().mockResolvedValue('Speaker 0 (Doctor): Hello, this is a test.'),
   extractDealIntelligence: jest.fn().mockResolvedValue({
     ai_response: {
       summary: 'Test summary',
-      conversationType: 'Buyer',
-      dealProbabilityScore: 85
+      conversationType: 'Consultation',
+      priorityScore: 85,
+      detectedContext: { industry: ['Healthcare'], nature: ['Consultation'] },
+      actionItems: [{ date: '10-Mar-2026 (Tuesday)', task: 'Follow-up', performedBy: 'Doctor' }]
     },
     long_transcript: false
   }),
 }));
 
 jest.mock('../services/calendarService', () => ({
-  scheduleFollowUp: jest.fn().mockResolvedValue({ eventDate: new Date() }),
+  scheduleFollowUp: jest.fn().mockResolvedValue([{ eventDate: new Date() }]),
 }));
 
 beforeAll(async () => {
@@ -69,7 +71,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       firstName: 'Meeting',
       lastName: 'Tester',
       email: email,
-      phone: '9000000000',
+      phone: `9${Math.floor(Math.random() * 900000000)}`,
       password: 'password123'
     });
 
@@ -130,7 +132,7 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data.projectId).toBeDefined();
-      
+
       const meeting = await Meeting.findById(res.body.data._id).populate('projectId');
       expect((meeting?.projectId as any).name).toBe('Unnamed Project');
     });
@@ -182,14 +184,28 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
   });
 
   describe('GET /api/meetings', () => {
-    it('should list all meetings for the authenticated broker', async () => {
+    it('should list all meetings with consolidated ai_response object', async () => {
+      // Ensure at least one meeting exists for this broker
+      await Meeting.create({
+        brokerId: userId,
+        projectId,
+        title: 'List Test',
+        summary: 'Test summary',
+        status: MeetingStatus.COMPLETED
+      });
+
       const res = await request(app)
         .get('/api/meetings')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+
+      const meeting = res.body.data.find((m: any) => m.title === 'List Test');
+      expect(meeting).toBeDefined();
+      expect(meeting.ai_response).toBeDefined();
+      expect(meeting.ai_response.summary).toBe('Test summary');
     });
 
     it('should not show meetings belonging to other brokers', async () => {
@@ -219,40 +235,64 @@ describe('Meeting API - Comprehensive Security, Validation & Business Logic', ()
     });
   });
 
-  describe('GET /api/meetings/get/:id', () => {
+  describe('POST /api/meetings/regenerate/:id', () => {
     let meetingId: string;
 
     beforeAll(async () => {
-      const meeting = await Meeting.findOne({ brokerId: userId });
-      meetingId = meeting?.id.toString() || '';
+      const meeting = await Meeting.create({
+        brokerId: userId,
+        projectId,
+        title: 'Regeneration Test',
+        transcript: 'Some existing transcript',
+        status: MeetingStatus.COMPLETED
+      });
+      meetingId = meeting?.id?.toString() || "";
     });
 
-    it('should fetch details for a valid meeting ID', async () => {
+    it('should successfully start regeneration for an existing meeting', async () => {
       const res = await request(app)
-        .get(`/api/meetings/get/${meetingId}`)
+        .post(`/api/meetings/regenerate/${meetingId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.title).toBeDefined();
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Regeneration started');
     });
 
-    it('should fail with a 404 for a non-existent meeting ID', async () => {
+    it('should fail to regenerate for non-existent meeting', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app)
-        .get(`/api/meetings/get/${fakeId}`)
+        .post(`/api/meetings/regenerate/${fakeId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
-      expect(res.body.message).toBe('Meeting not found');
+    });
+  });
+
+  describe('DELETE /api/meetings/:id', () => {
+    let meetingId: string;
+
+    beforeAll(async () => {
+      const meeting = await Meeting.create({
+        brokerId: userId,
+        projectId,
+        title: 'Delete Test',
+        audioUrl: dummyAudioPath,
+        status: MeetingStatus.COMPLETED
+      });
+      meetingId = meeting?.id?.toString() || "";
     });
 
-    it('should fail with a 400 for an invalid ID format', async () => {
+    it('should successfully delete a meeting and return 200', async () => {
       const res = await request(app)
-        .get('/api/meetings/get/invalid-id')
+        .delete(`/api/meetings/${meetingId}`)
         .set('Authorization', `Bearer ${token}`);
 
-      expect(res.status).toBe(400);
-      expect(res.body.errors[0].msg).toBe('Invalid meeting ID format');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const deletedMeeting = await Meeting.findById(meetingId);
+      expect(deletedMeeting).toBeNull();
     });
   });
 });

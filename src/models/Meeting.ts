@@ -7,22 +7,41 @@ const MeetingSchema: Schema = new Schema({
   title: { type: String, required: true },
   audioUrl: { type: String }, // Link to recorded audio (S3 or local)
   transcript: { type: String }, // Raw transcript from STT
-  speakers: [{
-    speakerId: String,
-    role: String,
-    name: String
-  }],
 
-  // CRM Fields extracted from AI response
+  // CRM Fields extracted from AI response (Directly stored)
   clientName: { type: String, index: true },
   clientPhone: { type: String },
   clientEmail: { type: String },
-  conversationType: { type: String, enum: ['Buyer', 'Seller', 'General', 'Other', 'Under Evaluation'], index: true },
-  dealProbabilityScore: { type: Number, min: 0, max: 100 },
+  detectedContext: {
+    industry: [String],
+    nature: [String]
+  },
+  conversationType: { type: String, index: true },
+  priorityScore: { type: Number, min: 0, max: 100 },
 
-  // New Simplified Structure
-  ai_response: { type: Schema.Types.Mixed }, // Stores the full JSON from Azure OpenAI
+  summary: { type: String },
+  keyTakeaway: { type: String },
+  mainKeyPoints: [{
+    point: String,
+    party: String,
+    category: String
+  }],
+  participantProfiles: [{
+    id: String,
+    name: String,
+    role: String,
+    attributes: Schema.Types.Mixed
+  }],
+  actionItems: [{
+    date: String,
+    task: String,
+    performedBy: String
+  }],
+  suggestedAction: { type: String },
+  metadata: { type: Schema.Types.Mixed },
+
   long_transcript: { type: Boolean, default: false },
+  originalTranscript: { type: String },
 
   status: {
     type: String,
@@ -31,6 +50,26 @@ const MeetingSchema: Schema = new Schema({
   },
 
   createdAt: { type: Date, default: Date.now },
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for backward compatibility with frontend that expects 'ai_response' object
+MeetingSchema.virtual('ai_response').get(function () {
+  return {
+    detectedContext: this.detectedContext,
+    conversationType: this.conversationType,
+    summary: this.summary,
+    keyTakeaway: this.keyTakeaway,
+    mainKeyPoints: this.mainKeyPoints,
+    participantProfiles: this.participantProfiles,
+    actionItems: this.actionItems,
+    priorityScore: this.priorityScore,
+    suggestedAction: this.suggestedAction,
+    metadata: this.metadata,
+    client_name: this.clientName
+  };
 });
 
 export default mongoose.model('Meeting', MeetingSchema);

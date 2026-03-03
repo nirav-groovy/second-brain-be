@@ -17,7 +17,7 @@ app.listen(PORT, async () => {
     await mongoose.connect(MONGO_URI);
     console.log('MongoDB connected');
 
-    // Initialize DB with Admin and Categories
+    // Initialize DB with Admin
     await initializeDatabase();
   } catch (err) {
     console.error('Database connection error:', err);
