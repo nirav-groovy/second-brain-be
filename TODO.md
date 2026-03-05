@@ -22,6 +22,7 @@
 - [x] File upload implementation with Multer
 - [x] Recording processing endpoint
 - [x] **Speech-to-Text Integration (Sarvam AI & Deepgram)**
+- [x] **Randomized Language Detection (to avoid English greeting bias)**
 - [x] **Multilingual Support (Hindi, Gujarati, Hinglish)**
 - [x] **AI Deal Intelligence (Azure OpenAI GPT-4o)**
 - [x] **Multi-Persona Extraction (Nirav vs. Pankaj prompts)**

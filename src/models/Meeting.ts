@@ -43,6 +43,7 @@ const MeetingSchema: Schema = new Schema({
   long_transcript: { type: Boolean, default: false },
   originalTranscript: { type: String },
   sttService: { type: String }, // 'Sarvam' or 'Deepgram'
+  language: { type: String, default: 'unknown' }, // Detected language (e.g., 'en', 'hi')
 
   status: {
     type: String,

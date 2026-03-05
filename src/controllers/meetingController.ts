@@ -87,6 +87,7 @@ export const createMeeting = async (req: any, res: Response, next: NextFunction)
         console.log(`[Meeting ${savedMeeting._id}] STT Result entries count: ${mappedTranscript.length}`);
 
         savedMeeting.sttService = sttResult.sttService || 'Unknown';
+        savedMeeting.language = sttResult.language || 'unknown';
         savedMeeting.originalTranscript = JSON.stringify(mappedTranscript);
         savedMeeting.status = MeetingStatus.SPEAKERS_GENERATING;
         await savedMeeting.save();

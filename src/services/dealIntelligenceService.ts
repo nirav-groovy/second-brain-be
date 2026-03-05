@@ -1,21 +1,40 @@
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import crypto from "crypto";
+import { LRUCache } from "lru-cache";
+
 import { logError } from "@/utils/logger";
 import { ChatCompletionMessageParam } from "openai/resources/index";
 
 dotenv.config();
 
+const cache = new LRUCache<string, any>({
+  max: 100, // Store up to 100 analysis results
+  ttl: 1000 * 60 * 60 * 24, // 24 hours TTL
+});
+
+/**
+ * Generates a consistent hash for a transcript to be used as a cache key
+ */
+const getTranscriptHash = (text: string) => {
+  return crypto.createHash('md5').update(text).digest('hex');
+};
+
 const {
   AZURE_OPENAI_API_KEY,
   AZURE_OPENAI_ENDPOINT,
   AZURE_OPENAI_DEPLOYMENT_NAME,
+  AZURE_OPENAI_MINI_DEPLOYMENT_NAME,
   AZURE_OPENAI_API_VERSION,
 } = process.env;
+
+const MINI_MODEL = AZURE_OPENAI_MINI_DEPLOYMENT_NAME || "gpt-4o-mini";
+const PRO_MODEL = AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o";
 
 // Initialize Azure OpenAI only if key is present to prevent crashes in CI/Tests
 const azureClient = AZURE_OPENAI_API_KEY ? new OpenAI({
   apiKey: AZURE_OPENAI_API_KEY,
-  baseURL: `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT_NAME}`,
+  baseURL: `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${PRO_MODEL}`, // Default base URL
   defaultQuery: { "api-version": AZURE_OPENAI_API_VERSION },
   defaultHeaders: {
     "api-key": AZURE_OPENAI_API_KEY!
@@ -28,14 +47,22 @@ export const extractDealIntelligence = async (transcript: string) => {
     return { ai_response: getMockData(), long_transcript: false };
   }
 
+  // Cost Optimization: Check cache first
+  const transcriptHash = getTranscriptHash(transcript);
+  const cachedResult = cache.get(`intel_${transcriptHash}`);
+  if (cachedResult) {
+    console.log(`[AI] Cache hit for transcript intelligence!`);
+    return cachedResult;
+  }
+
   try {
     const MAX_CHARS = 12000;
     const is_max_char = transcript.length > MAX_CHARS;
     const safeTranscript = is_max_char ? transcript.slice(0, MAX_CHARS) : transcript;
 
-    console.log(`[AI] Extracting intelligence for transcript (${transcript.length} chars)...`);
+    console.log(`[AI] Extracting intelligence for transcript (${transcript.length} chars) using ${MINI_MODEL}...`);
     const response = await azureClient.chat.completions.create({
-      model: AZURE_OPENAI_DEPLOYMENT_NAME!,
+      model: MINI_MODEL, // Switched to GPT-4o-mini for cost optimization
       messages: getPrompt(safeTranscript),
       temperature: 0.2,
       max_tokens: 1500
@@ -44,8 +71,12 @@ export const extractDealIntelligence = async (transcript: string) => {
     const text = response?.choices?.[0]?.message?.content || "";
     console.log(`[AI] Raw intelligence response: ${text.slice(0, 500)}...`);
     const cleanJson = text.replace(/```json|```/g, "").trim();
+    const finalResult = { ai_response: JSON.parse(cleanJson), long_transcript: is_max_char };
 
-    return { ai_response: JSON.parse(cleanJson), long_transcript: is_max_char };
+    // Save to cache
+    cache.set(`intel_${transcriptHash}`, finalResult);
+
+    return finalResult;
   } catch (error: any) {
     // Log to error database
     await logError(error, {
@@ -59,10 +90,18 @@ export const extractDealIntelligence = async (transcript: string) => {
 export const identifySpeakers = async (transcript: string) => {
   if (!azureClient || !AZURE_OPENAI_API_KEY) return null;
 
+  // Cost Optimization: Check cache first
+  const transcriptHash = getTranscriptHash(transcript);
+  const cachedResult = cache.get(`speakers_${transcriptHash}`);
+  if (cachedResult) {
+    console.log(`[AI] Cache hit for speaker identification!`);
+    return cachedResult;
+  }
+
   try {
-    console.log(`[AI] Identifying speakers for transcript (${transcript.length} chars)...`);
+    console.log(`[AI] Identifying speakers for transcript (${transcript.length} chars) using ${MINI_MODEL}...`);
     const response = await azureClient.chat.completions.create({
-      model: AZURE_OPENAI_DEPLOYMENT_NAME!,
+      model: MINI_MODEL, // Switched to GPT-4o-mini for cost optimization
       messages: [
         {
           role: "system",
@@ -94,7 +133,11 @@ export const identifySpeakers = async (transcript: string) => {
 
     const text = response?.choices?.[0]?.message?.content || "";
     console.log(`[AI] Raw speaker identification response: ${text.slice(0, 500)}...`);
-    return text.trim();
+    const result = text.trim();
+    // Save to cache
+    cache.set(`speakers_${transcriptHash}`, result);
+
+    return result;
   } catch (error: any) {
     // Log to error database
     await logError(error, {

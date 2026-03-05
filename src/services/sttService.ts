@@ -13,12 +13,82 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || '';
 // Initialize Deepgram only if API key is present to prevent crashes in CI/Tests
 const deepgram = DEEPGRAM_API_KEY ? createClient(DEEPGRAM_API_KEY) : null;
 
+/**
+ * Detects the language of an audio file using a small sample (approx 512KB).
+ * To avoid bias from initial greetings (which are often in English), it takes 
+ * a random chunk from the file while preserving the initial header.
+ * @returns Detected language code (e.g., 'en', 'hi')
+ */
+const detectLanguage = async (audioUrl: string): Promise<string> => {
+  if (!deepgram) return 'unknown';
+
+  try {
+    const stats = fs.statSync(audioUrl);
+    const maxSampleSize = 512 * 1024;
+
+    let buffer: Buffer;
+
+    // If file is small, just read the whole thing
+    if (stats.size <= maxSampleSize) {
+      buffer = fs.readFileSync(audioUrl);
+    } else {
+      // 1. Preserve the first 8KB (header) so Deepgram can identify the audio format/codec
+      const headerSize = 8192; 
+      const remainingSampleSize = maxSampleSize - headerSize;
+
+      const fd = fs.openSync(audioUrl, 'r');
+      const headerBuffer = Buffer.alloc(headerSize);
+      fs.readSync(fd, headerBuffer, 0, headerSize, 0);
+
+      // 2. Pick a random offset for the rest of the sample to avoid initial greetings (bias towards English)
+      // We start the random range after the header to ensure we don't overlap
+      const maxOffset = stats.size - remainingSampleSize;
+      const position = headerSize + Math.floor(Math.random() * (maxOffset - headerSize));
+
+      const chunkBuffer = Buffer.alloc(remainingSampleSize);
+      fs.readSync(fd, chunkBuffer, 0, remainingSampleSize, position);
+      fs.closeSync(fd);
+
+      // 3. Combine header and random chunk into a single buffer for processing
+      buffer = Buffer.concat([headerBuffer, chunkBuffer]);
+      console.log(`[STT] Language detection sample: header(0-8KB) + random chunk from offset ${position}`);
+    }
+
+    const { result, error } = (await deepgram.listen.prerecorded.transcribeFile(
+      buffer,
+      {
+        model: 'nova-2',
+        detect_language: true,
+      }
+    )) as any;
+
+    if (error) return 'unknown';
+    return result?.results?.channels?.[0]?.detected_language || 'unknown';
+  } catch (err) {
+    console.warn('[STT] Language detection failed, defaulting to unknown:', err);
+    return 'unknown';
+  }
+};
 export const transcribeAudio = async (audioUrl: string | null, projectId: string = 'unnamed') => {
   if (!audioUrl) throw new Error('Audio file path is required for STT');
 
   try {
-    // We are now prioritizing Sarvam AI for Indian language support and diarization.
-    return await transcribeAudioSarvam(audioUrl, projectId);
+    console.log(`[STT] Processing audio for project: ${projectId}`);
+
+    // Cost Optimization: Detect language first
+    const detectedLang = await detectLanguage(audioUrl);
+    console.log(`[STT] Detected language: ${detectedLang}`);
+
+    let result;
+    if (detectedLang === 'en') {
+      console.log(`[STT] English detected. Using Deepgram for cost optimization (~35% savings).`);
+      result = await transcribeAudioDeepgram(audioUrl);
+    } else {
+      console.log(`[STT] Non-English or unknown language detected (${detectedLang}). Using Sarvam AI for superior Indian language support.`);
+      result = await transcribeAudioSarvam(audioUrl, projectId);
+    }
+
+    return { ...result, language: detectedLang };
   } catch (error) {
     // Log to error database before throwing further
     await logError(error, {

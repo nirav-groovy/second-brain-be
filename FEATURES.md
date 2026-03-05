@@ -31,6 +31,7 @@ This document provides a comprehensive overview of all features implemented in t
 
 - **Indian Language Support:** Optimized for Indian contexts, supporting **English, Hindi, Gujarati, and code-mixed (Hinglish)** conversations.
 - **Dual-Engine Architecture:** Primary processing via **Sarvam AI** (specialized for Indian languages) with **Deepgram** as a secondary/fallback option.
+- **Randomized Language Detection:** Uses a smart sampling strategy to detect language accurately. Instead of just checking the beginning of a recording (which often contains English greetings), the system preserves the file header and picks a random chunk from the audio to identify the primary language.
 - **Speaker Diarization:** Automatically identifies different speakers in the audio using `MeetingStatus` enums to track progress.
 - **Improved Speaker Mapping:** Advanced AI logic to deduce real names and roles (e.g., "Doctor", "Buyer") from conversational cues, ensuring distinct identity assignment.
 
