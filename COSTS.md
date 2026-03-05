@@ -69,23 +69,29 @@ Assuming a standard audio compression (e.g., MP3/AAC):
 
 ## 5. Scaling Scenarios (Cost per User & Growth)
 
-This table shows how the **Centralized Infrastructure** costs are absorbed as the user base grows.
+This table breaks down the **Centralized Infrastructure** into individual components (VM, DB, Disk) alongside API costs.
 
-| Scenario                     | Monthly Volume | Total Infra (VM+DB+Disk) | API Variable (₹19/rec) | **Total Monthly** | **Cost Per User** | **Cost Per Recording** |
-| :--------------------------- | :------------- | :----------------------- | :--------------------- | :---------------- | :---------------- | :--------------------- |
-| **Small (10 Users)**         | 150 Recs       | ₹4,626 (Dev DB)          | ₹2,850                 | **₹7,476**        | **₹747**          | **₹49.84**             |
-| **Growth (50 Users)**        | 750 Recs       | ₹8,693 (Small Prod DB)   | ₹14,250                | **₹22,943**       | **₹459**          | **₹30.59**             |
-| **Mid-Market (200 Users)**   | 2,500 Recs     | ₹18,902 (Medium DB)      | ₹47,500                | **₹66,402**       | **₹332**          | **₹26.56**             |
-| **Enterprise (1,000 Users)** | 15,000 Recs    | ₹62,062 (Enterprise DB)  | ₹285,000               | **₹347,062**      | **₹347**          | **₹23.14**             |
+| Scenario                   | Monthly Vol | VM     | DB      | Disk   | API (Var) | **Total**    | **Cost/User** | **Cost/Rec** |
+| :------------------------- | :---------- | :----- | :------ | :----- | :-------- | :----------- | :------------ | :----------- |
+| **Free / Prototype**       | 5 Recs      | ₹3,547 | **₹0**  | **₹0** | ₹95       | **₹3,642**   | ₹1,821        | ₹728.40      |
+| **Small (10 Users)**       | 150 Recs    | ₹3,547 | ₹664    | ₹415   | ₹2,850    | **₹7,476**   | ₹747          | ₹49.84       |
+| **Growth (50 Users)**      | 750 Recs    | ₹3,547 | ₹4,731  | ₹415   | ₹14,250   | **₹22,943**  | ₹459          | ₹30.59       |
+| **Mid-Market (200 Users)** | 2,500 Recs  | ₹3,547 | ₹14,940 | ₹415   | ₹47,500   | **₹66,402**  | ₹332          | ₹26.56       |
+| **Enterprise (1k Users)**  | 15k Recs    | ₹3,547 | ₹58,100 | ₹1,875 | ₹285k     | **₹348,522** | ₹348          | ₹23.23       |
+
+### 🛑 Free Tier Limits
+
+- **DB Free Tier (M0):** Max **512MB** storage. Suitable for ~2,000 meeting _records_ (excluding audio).
+- **Disk Free Tier:** Most providers offer ~1GB to 5GB free. At 1MB/min, this lasts for **\~30 to 150 meetings** before requiring the $5/100GB upgrade.
 
 ---
 
 ## 6. Scaling Strategy & Best Practices
 
 1.  **Centralized Efficiency:** The VM cost is fixed. At 1,000 users, the VM cost per user is only ₹3.50. Focus on scaling the **Database** and **API efficiency**.
-2.  **Storage Pruning:** At 1,000 users making 15,000 recordings, you use 450GB/month. Implement a **30-day retention policy** or move files to **Azure Blob Cold Tier / AWS Glacier** to keep the primary storage cost at $5.
+2.  **Storage Pruning:** At 1,000 users making 15,000 recordings, you use 450GB/month. Implement a **30-day retention policy** or move files to **Azure Blob Cold Tier / AWS Glacier** to keep the primary storage cost low.
 3.  **Database Indexing:** As you scale to 15,000+ recordings, ensure MongoDB indexes are optimized for `projectId` and `userId` to avoid high RU (Request Unit) consumption.
-4.  **Concurrency Management:** 1,000 users might trigger simultaneous transcription requests. Implement a **Queue System (Redis/BullMQ)** to level out API spikes and prevent server crashes.
+4.  **Concurrency Management:** 1,000 users might trigger simultaneous transcription requests. Implement a **Queue System (Redis/BullMQ)** to level out API spikes.
 
 ---
 
